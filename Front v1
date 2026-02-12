@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+      /* --- PALETA DE CORES DA MARCA (BASEADA NA LOGO) --- */
+      :root {
+        --brand-blue: #002B49;      /* Azul Escuro da Logo */
+        --brand-gold: #E2A061;      /* Dourado/Cobre da Logo */
+        --brand-gold-hover: #c48b47;
+        --bg-body: #f0f2f5;         /* Fundo cinza suave */
+        --text-dark: #1a1a1a;
+        --sidebar-width: 250px;
+      }
+      
+      body { 
+        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+        background-color: var(--bg-body); 
+        margin: 0; overflow: hidden; 
+        color: var(--text-dark);
+      }
+      
+      .app-container { display: flex; height: 100vh; width: 100vw; }
+
+      /* --- SIDEBAR (AZUL MARINHO) --- */
+      .sidebar { 
+        width: var(--sidebar-width); 
+        background-color: var(--brand-blue); 
+        color: white; 
+        display: flex; flex-direction: column; 
+        padding: 20px 15px; 
+        flex-shrink: 0; 
+        box-shadow: 4px 0 15px rgba(0,0,0,0.15); 
+        z-index: 100; 
+      }
+      
+      /* LOGO */
+      .sidebar-logo { text-align: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+      .sidebar-logo img { width: 80px; height: auto; display: block; margin: 0 auto 10px auto; }
+      .sidebar-brand-text { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--brand-gold); font-weight: 700; }
+
+      /* MENU */
+      .nav-btn { 
+        background: transparent; border: none; 
+        color: rgba(255,255,255,0.8); 
+        padding: 12px 20px; 
+        text-align: left; 
+        border-radius: 8px; 
+        margin-bottom: 8px; 
+        transition: all 0.3s ease; 
+        width: 100%; 
+        display: flex; align-items: center; cursor: pointer; font-size: 0.95rem; font-weight: 500;
+      }
+      .nav-btn:hover { background: rgba(226, 160, 97, 0.15); color: var(--brand-gold); }
+      .nav-btn.active { 
+        background: var(--brand-gold); 
+        color: var(--brand-blue); 
+        font-weight: 700; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2); 
+      }
+      .nav-btn i { margin-right: 12px; font-size: 1.1rem; }
+
+      /* --- CONTEÚDO PRINCIPAL --- */
+      .main-content { flex-grow: 1; overflow-y: auto; padding: 30px; }
+      
+      /* CARDS BRANCOS */
+      .card-panel { 
+        background: white; 
+        border-radius: 12px; 
+        box-shadow: 0 4px 20px rgba(0,0,0,0.04); 
+        padding: 25px; 
+        margin-bottom: 25px; 
+        border-top: 4px solid transparent; 
+      }
+      
+      /* Bordas coloridas para destaque */
+      .border-gold { border-top-color: var(--brand-gold) !important; }
+      .border-blue { border-top-color: var(--brand-blue) !important; }
+
+      /* Títulos */
+      h4 { color: var(--brand-blue); font-weight: 700; letter-spacing: -0.5px; }
+      .text-gold { color: var(--brand-gold) !important; } 
+      .text-blue { color: var(--brand-blue) !important; }
+
+      /* Formulários */
+      .form-label { font-size: 0.75rem; font-weight: 700; color: var(--brand-blue); text-transform: uppercase; letter-spacing: 0.5px; }
+      .form-control, .form-select { 
+        border: 1px solid #e0e0e0; padding: 10px 12px; border-radius: 6px; font-size: 0.9rem; 
+      }
+      .form-control:focus, .form-select:focus { 
+        border-color: var(--brand-gold); 
+        box-shadow: 0 0 0 3px rgba(226, 160, 97, 0.2); 
+        outline: none; 
+      }
+
+      /* Botões */
+      .btn-custom { border: none; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; transition: 0.3s; border-radius: 6px; }
+      .btn-brand { background-color: var(--brand-blue); color: white; }
+      .btn-brand:hover { background-color: #001f35; color: var(--brand-gold); }
+      .btn-gold { background-color: var(--brand-gold); color: var(--brand-blue); }
+      .btn-gold:hover { background-color: var(--brand-gold-hover); color: white; }
+
+      /* Filtros */
+      .filter-bar { 
+        background: white; padding: 20px; border-radius: 12px; 
+        margin-bottom: 25px; border-left: 5px solid var(--brand-gold); 
+        box-shadow: 0 2px 10px rgba(0,0,0,0.03); 
+      }
+      .filter-label { font-size: 0.7rem; color: #888; text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 4px; }
+
+      /* Visibilidade */
+      .view-section { display: none; animation: slideIn 0.4s ease; } 
+      .view-section.active { display: block; }
+      @keyframes slideIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+      .chart-box { height: 250px; position: relative; width: 100%; }
+    </style>
+  </head>
+  <body>
+
+    <div class="app-container">
+      
+      <div class="sidebar">
+        <div class="sidebar-logo">
+           <img src="https://i.imgur.com/dgk9WN6.png" alt="Logo">
+           <div class="sidebar-brand-text">Gestão N2<br>Acessórias</div>
+        </div>
+        
+        <button class="nav-btn active" onclick="navegar('registro')">
+          <i class="bi bi-pencil-square"></i> Registro
+        </button>
+        <button class="nav-btn" onclick="navegar('provas')">
+          <i class="bi bi-mortarboard-fill"></i> Avaliações
+        </button>
+        <button class="nav-btn" onclick="navegar('dashboard')">
+          <i class="bi bi-graph-up-arrow"></i> Dashboard
+        </button>
+        
+        <div style="margin-top: auto; padding-top:20px; border-top: 1px solid rgba(255,255,255,0.1); text-align:center;">
+          <small style="opacity:0.6; font-size:0.7rem;">&copy; 2026 N2 System</small>
+        </div>
+      </div>
+
+      <div class="main-content">
+        
+        <div id="view-registro" class="view-section active">
+          <div class="d-flex align-items-center mb-4">
+             <div style="width: 5px; height: 30px; background: var(--brand-gold); margin-right: 12px; border-radius: 2px;"></div>
+             <h4>Novo Atendimento</h4>
+          </div>
+          
+          <div class="card-panel" style="max-width: 950px;">
+            <form id="formAtendimento">
+              <div class="row g-4">
+                <div class="col-md-6"><label class="form-label">Solicitante</label><select class="form-select sel-colaborador" name="solicitante" onchange="atualizarEquipe('formAtendimento')" required><option value="" disabled selected>Carregando...</option></select></div>
+                <div class="col-md-6"><label class="form-label text-muted">Equipe</label><input type="text" class="form-control bg-light input-equipe" name="equipe" readonly></div>
+                <div class="col-md-6"><label class="form-label">Categoria Macro</label><select class="form-select" name="categoria" required><option>Dúvida Técnica</option><option>Processo Administrativo</option><option>Gestão de Conflito</option><option>Erro de Sistema</option></select></div>
+                <div class="col-md-6"><label class="form-label">Tipo de Resolução</label><select class="form-select" name="resolucao" required><option>Orientação Rápida</option><option>Acompanhamento</option><option>Execução (Fiz por ele)</option></select></div>
+                <div class="col-12"><label class="form-label">Assunto Específico</label><input type="text" class="form-control" name="assunto" required></div>
+                <div class="col-md-3"><label class="form-label">Tempo (min)</label><input type="number" class="form-control" name="tempo" min="1" required></div>
+                <div class="col-md-9"><label class="form-label">Ação Tomada</label><input type="text" class="form-control" name="acao" required></div>
+                <div class="col-12 mt-4"><button type="button" id="btnSalvarReg" class="btn btn-custom btn-brand w-100 py-3" onclick="submeterForm('Atendimento')"><i class="bi bi-save me-2"></i>SALVAR REGISTRO</button><div id="msgAtendimento" class="mt-2 text-center small fw-bold"></div></div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div id="view-provas" class="view-section">
+          <div class="d-flex align-items-center mb-4">
+             <div style="width: 5px; height: 30px; background: var(--brand-gold); margin-right: 12px; border-radius: 2px;"></div>
+             <h4>Lançar Nota</h4>
+          </div>
+          
+          <div class="card-panel border-gold" style="max-width: 950px;">
+            <form id="formProva">
+              <div class="row g-4">
+                <div class="col-md-6"><label class="form-label">Colaborador Avaliado</label><select class="form-select sel-colaborador" name="colaborador" onchange="atualizarEquipe('formProva')" required><option value="" disabled selected>Carregando...</option></select></div>
+                <div class="col-md-6"><label class="form-label text-muted">Equipe</label><input type="text" class="form-control bg-light input-equipe" name="equipe" readonly></div>
+                <div class="col-md-8"><label class="form-label">Nome da Avaliação</label><input type="text" class="form-control" name="nomeProva" placeholder="Ex: Teste Técnico Nível 1" required></div>
+                <div class="col-md-4"><label class="form-label">Nota (0-100)</label><input type="number" class="form-control" name="nota" step="0.1" required></div>
+                <div class="col-12 mt-4"><button type="button" id="btnSalvarProv" class="btn btn-custom btn-gold w-100 py-3" onclick="submeterForm('Prova')"><i class="bi bi-check-circle-fill me-2"></i>LANÇAR NOTA</button><div id="msgProva" class="mt-2 text-center small fw-bold"></div></div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div id="view-dashboard" class="view-section">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex align-items-center">
+               <div style="width: 5px; height: 30px; background: var(--brand-gold); margin-right: 12px; border-radius: 2px;"></div>
+               <h4>Dashboard Analítico</h4>
+            </div>
+            <button class="btn btn-outline-dark btn-sm fw-bold" onclick="carregarDados()"><i class="bi bi-arrow-clockwise me-1"></i> ATUALIZAR</button>
+          </div>
+
+          <div class="filter-bar">
+            <div class="row g-3">
+              <div class="col-md-2"><span class="filter-label">Ano</span><select id="fAno" class="form-select form-select-sm" onchange="aplicarFiltros()"></select></div>
+              <div class="col-md-2"><span class="filter-label">Trimestre</span><select id="fTri" class="form-select form-select-sm" onchange="aplicarFiltros()"><option value="all">Todos</option><option value="1">1º Trim (Q1)</option><option value="2">2º Trim (Q2)</option><option value="3">3º Trim (Q3)</option><option value="4">4º Trim (Q4)</option></select></div>
+              <div class="col-md-2"><span class="filter-label">Mês</span><select id="fMes" class="form-select form-select-sm" onchange="aplicarFiltros()"></select></div>
+              <div class="col-md-3"><span class="filter-label">Equipe</span><select id="fEq" class="form-select form-select-sm" onchange="aplicarFiltros()"><option value="all">Todas</option></select></div>
+              <div class="col-md-3"><span class="filter-label">Colaborador</span><select id="fCol" class="form-select form-select-sm" onchange="aplicarFiltros()"><option value="all">Todos</option></select></div>
+            </div>
+          </div>
+
+          <div class="row g-4 mb-4">
+            <div class="col-md-3"><div class="card-panel border-blue text-center p-4"><h6 class="text-muted small fw-bold mb-2">CHAMADOS</h6><h2 class="fw-bold text-blue m-0" id="kpiTotal">...</h2></div></div>
+            <div class="col-md-3"><div class="card-panel border-gold text-center p-4"><h6 class="text-muted small fw-bold mb-2">HORAS</h6><h2 class="fw-bold text-gold m-0" id="kpiHoras">...</h2></div></div>
+            <div class="col-md-3"><div class="card-panel border-blue text-center p-4"><h6 class="text-muted small fw-bold mb-2">TMA</h6><h2 class="fw-bold text-blue m-0" id="kpiTMA">...</h2></div></div>
+            <div class="col-md-3"><div class="card-panel border-gold text-center p-4" style="background:#fffaf4"><h6 class="text-muted small fw-bold mb-2">MÉDIA NOTAS</h6><h2 class="fw-bold text-gold m-0" id="kpiNota">...</h2></div></div>
+          </div>
+
+          <div class="row g-4">
+            <div class="col-md-8"><div class="card-panel"><h6 class="fw-bold small mb-4 text-blue">TOP CATEGORIAS (PARETO)</h6><div class="chart-box"><canvas id="cBar"></canvas></div></div></div>
+            <div class="col-md-4"><div class="card-panel"><h6 class="fw-bold small mb-4 text-blue">TIPO DE RESOLUÇÃO</h6><div class="chart-box"><canvas id="cPie"></canvas></div></div></div>
+            
+            <div class="col-md-8"><div class="card-panel"><h6 class="fw-bold small mb-4 text-blue">EVOLUÇÃO TEMPORAL</h6><div class="chart-box"><canvas id="cLine"></canvas></div></div></div>
+            
+            <div class="col-md-4"><div class="card-panel"><h6 class="fw-bold small mb-4 text-gold">TIPOS DE PROVAS APLICADAS</h6><div class="chart-box"><canvas id="cProvas"></canvas></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let cache = { equipe: [], logs: [], provas: [] };
+      let charts = {};
+      // PALETA DE CORES DEFINIDA PELA LOGO
+      const colors = { 
+        blue: '#002B49', 
+        gold: '#E2A061', 
+        list: ['#002B49', '#E2A061', '#5B7C99', '#D98E45', '#1F4E79'] 
+      };
+
+      window.onload = function() { carregarDados(); };
+
+      function navegar(tela) {
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+        document.getElementById('view-' + tela).classList.add('active');
+        if(tela === 'dashboard') aplicarFiltros();
+      }
+
+      function carregarDados() {
+        google.script.run.withSuccessHandler(d => {
+          if(!d) return; cache = d;
+          popularSelectsGenerico('.sel-colaborador', d.equipe, 'colaborador');
+          popFiltros(d); aplicarFiltros();
+        }).getDadosIniciais();
+      }
+
+      function popularSelectsGenerico(sel, dados, campo) {
+        document.querySelectorAll(sel).forEach(s => {
+          let old=s.value; s.innerHTML='<option value="" disabled selected>Selecione...</option>';
+          if(dados) dados.forEach(i=>{let o=new Option(i[campo], i[campo]); s.add(o)});
+          if(old) s.value=old;
+        });
+      }
+
+      function atualizarEquipe(formId) {
+        let f = document.getElementById(formId);
+        let p = cache.equipe.find(x => x.colaborador === f.querySelector('.sel-colaborador').value);
+        f.querySelector('.input-equipe').value = p ? p.lider : "";
+      }
+
+      function submeterForm(tipo) {
+        let formId='form'+tipo, btnId=(tipo==='Atendimento'?'btnSalvarReg':'btnSalvarProv'), msgId='msg'+tipo;
+        let form=document.getElementById(formId), btn=document.getElementById(btnId);
+        if(!form.checkValidity()) { form.reportValidity(); return; }
+        
+        let txt=btn.innerHTML; 
+        btn.disabled=true; btn.innerHTML='<span class="spinner-border spinner-border-sm"></span> SALVANDO...';
+        
+        let obj={}; new FormData(form).forEach((v,k)=>obj[k]=v);
+        let fn = tipo==='Atendimento'?'salvarAtendimento':'salvarProva';
+        
+        google.script.run.withSuccessHandler(res=>{
+          document.getElementById(msgId).innerHTML='<span class="text-success fw-bold">'+res+'</span>';
+          form.reset(); btn.disabled=false; btn.innerHTML=txt;
+          setTimeout(()=>document.getElementById(msgId).innerHTML='',3000);
+          carregarDados();
+        })[fn](obj);
+      }
+
+      // --- DASHBOARD ---
+      function popFiltros(d) {
+        let sm=document.getElementById('fMes'); sm.innerHTML='<option value="all">Todos</option>';
+        ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"].forEach((m,i)=>sm.add(new Option(m,i)));
+        
+        let sa=document.getElementById('fAno'); sa.innerHTML='<option value="all">Todos</option>';
+        [...new Set(d.logs.map(l=>new Date(l.data).getFullYear()))].sort().reverse().forEach(a=>{if(a)sa.add(new Option(a,a))});
+
+        let se=document.getElementById('fEq'); se.innerHTML='<option value="all">Todas</option>';
+        [...new Set(d.equipe.map(e=>e.lider))].sort().forEach(l=>se.add(new Option(l,l)));
+
+        let sc=document.getElementById('fCol'); sc.innerHTML='<option value="all">Todos</option>';
+        d.equipe.forEach(c=>sc.add(new Option(c.colaborador,c.colaborador)));
+      }
+
+      function aplicarFiltros() {
+        let f={
+          ano:document.getElementById('fAno').value, tri:document.getElementById('fTri').value,
+          mes:document.getElementById('fMes').value, eq:document.getElementById('fEq').value,
+          col:document.getElementById('fCol').value
+        };
+        let l = cache.logs.filter(x => checar(x,f,'solicitante'));
+        let p = cache.provas.filter(x => checar(x,f,'colaborador'));
+        renderDash(l, p);
+      }
+
+      function checar(item, f, campo) {
+        let dt=new Date(item.data);
+        if(f.ano!=='all' && dt.getFullYear()!=f.ano) return false;
+        if(f.mes!=='all' && dt.getMonth()!=f.mes) return false;
+        if(f.tri!=='all' && Math.floor(dt.getMonth()/3)+1 != f.tri) return false;
+        if(f.col!=='all' && item[campo]!==f.col) return false;
+        if(f.eq!=='all' && item.equipe!==f.eq) return false;
+        return true;
+      }
+
+      function renderDash(l, p) {
+        // KPIs
+        let tot=l.length, mins=l.reduce((a,b)=>a+(Number(b.tempo)||0),0);
+        document.getElementById('kpiTotal').innerText=tot;
+        document.getElementById('kpiHoras').innerText=(mins/60).toFixed(1)+'h';
+        document.getElementById('kpiTMA').innerText=tot?(mins/tot).toFixed(0)+'m':'0';
+        document.getElementById('kpiNota').innerText=p.length?(p.reduce((a,b)=>a+(Number(b.nota)||0),0)/p.length).toFixed(1):'-';
+
+        // Dados Gráficos
+        let cats={}, ress={}, evols={}, tiposP={};
+        l.forEach(x => {
+          cats[x.categoria]=(cats[x.categoria]||0)+1;
+          ress[x.resolucao]=(ress[x.resolucao]||0)+1;
+          evols[new Date(x.data).toLocaleDateString('pt-BR').slice(0,5)]=(evols[new Date(x.data).toLocaleDateString('pt-BR').slice(0,5)]||0)+1;
+        });
+
+        p.forEach(x => {
+           let n = x.nomeProva || "Não informado";
+           tiposP[n] = (tiposP[n]||0)+1;
+        });
+
+        // Renderização
+        draw('cBar', 'bar', Object.entries(cats).sort((a,b)=>b[1]-a[1]), 'CATEGORIAS');
+        draw('cPie', 'doughnut', Object.entries(ress), 'RESOLUÇÃO');
+        draw('cLine', 'line', Object.entries(evols), 'VOLUME');
+        draw('cProvas', 'doughnut', Object.entries(tiposP).sort((a,b)=>b[1]-a[1]), 'TIPOS');
+      }
+
+      function draw(id, type, arr, lbl) {
+        let ctx=document.getElementById(id).getContext('2d');
+        if(charts[id]) charts[id].destroy();
+        charts[id] = new Chart(ctx, {
+          type: type,
+          data: {
+            labels: arr.map(x=>x[0]),
+            datasets: [{
+              label: lbl, data: arr.map(x=>x[1]),
+              backgroundColor: type==='line'?colors.gold : colors.list,
+              borderColor: type==='line'?colors.gold : '#fff',
+              borderWidth: 2, tension: 0.3, fill: type==='line'
+            }]
+          },
+          options: {
+            responsive:true, maintainAspectRatio:false,
+            plugins:{legend:{position:'bottom', display:type!=='bar'}},
+            indexAxis: id==='cBar'?'y':'x',
+            scales: { x:{grid:{display:false}}, y:{beginAtZero:true, grid:{borderDash:[2,2]}} }
+          }
+        });
+      }
+    </script>
+  </body>
+</html>
+
