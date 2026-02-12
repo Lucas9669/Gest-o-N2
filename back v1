@@ -1,0 +1,87 @@
+// =======================================================
+// 1. CONFIGURAÇÃO E ACESSO
+// =======================================================
+function doGet(e) {
+  return HtmlService.createTemplateFromFile('Index')
+      .evaluate()
+      .setTitle('Gestão N2 Acessórias')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function onOpen() {
+  SpreadsheetApp.getUi().createMenu('🚀 Gestão N2')
+    .addItem('Abrir Sistema', 'abrirPainel')
+    .addToUi();
+}
+
+function abrirPainel() {
+  var html = HtmlService.createTemplateFromFile('Index')
+    .evaluate()
+    .setTitle('Gestão N2 Acessórias')
+    .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+  SpreadsheetApp.getUi().showSidebar(html);
+}
+
+// =======================================================
+// 2. LEITURA DE DADOS (OTIMIZADA)
+// =======================================================
+function getDadosIniciais() {
+  // Função auxiliar para leitura rápida
+  function ler_(aba, cols, mapFn) {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(aba);
+    if (!sheet || sheet.getLastRow() <= 1) return [];
+    var vals = sheet.getRange(2, 1, sheet.getLastRow() - 1, cols).getValues();
+    return vals.map(mapFn);
+  }
+
+  // A. Equipe
+  var equipe = ler_("EQUIPE - ONGOING", 3, function(r) {
+    return { 
+      colaborador: r[0], lider: r[1], inicio: (r[2] instanceof Date) ? r[2].toISOString() : "" 
+    };
+  }).filter(function(p) { return p.colaborador !== ""; });
+
+  // B. Logs (Atendimentos)
+  var logs = ler_("ATENDIMENTOS - AJUDA", 9, function(r) {
+    return {
+      data: (r[0] instanceof Date) ? r[0].toISOString() : "",
+      usuario: r[1], solicitante: r[2], equipe: r[3],
+      categoria: r[4], assunto: r[5], acao: r[6], tempo: r[7], resolucao: r[8]
+    };
+  });
+
+  // C. Provas (Avaliações)
+  var provas = ler_("PROVAS - AVALIACOES", 6, function(r) {
+    return {
+      data: (r[0] instanceof Date) ? r[0].toISOString() : "",
+      usuario: r[1], colaborador: r[2], equipe: r[3],
+      nomeProva: r[4], nota: r[5]
+    };
+  });
+
+  return { equipe: equipe, logs: logs, provas: provas };
+}
+
+// =======================================================
+// 3. GRAVAÇÃO DE DADOS
+// =======================================================
+function salvarDados(aba, dadosArray) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(aba);
+    if (!sheet) return "Erro: Aba '" + aba + "' não encontrada.";
+    // Adiciona Timestamp e Usuário automaticamente
+    var linha = [new Date(), Session.getActiveUser().getEmail()].concat(dadosArray);
+    sheet.appendRow(linha);
+    return "✅ Sucesso!";
+  } catch (e) { return "Erro: " + e.toString(); }
+}
+
+function salvarAtendimento(f) {
+  return salvarDados("ATENDIMENTOS - AJUDA", [f.solicitante, f.equipe, f.categoria, f.assunto, f.acao, f.tempo, f.resolucao]);
+}
+
+function salvarProva(f) {
+  return salvarDados("PROVAS - AVALIACOES", [f.colaborador, f.equipe, f.nomeProva, f.nota]);
+}
+
