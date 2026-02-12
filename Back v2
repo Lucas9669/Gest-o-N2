@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <style>
+      /* --- PALETA E VARIÁVEIS --- */
+      :root {
+        --brand-blue: #002B49;
+        --brand-gold: #E2A061;
+        --brand-gold-hover: #c48b47;
+        --bg-body: #f8f9fa;
+        --text-dark: #2c3e50;
+        --sidebar-width: 260px;
+      }
+      
+      body { 
+        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+        background-color: var(--bg-body); 
+        margin: 0; overflow: hidden; 
+        color: var(--text-dark);
+      }
+      
+      /* Scrollbar Fina */
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
+      ::-webkit-scrollbar-thumb:hover { background: var(--brand-gold); }
+
+      .app-container { display: flex; height: 100vh; width: 100vw; }
+
+      /* --- SIDEBAR --- */
+      .sidebar { 
+        width: var(--sidebar-width); 
+        background: linear-gradient(160deg, var(--brand-blue) 0%, #001a2e 100%);
+        color: white; 
+        display: flex; flex-direction: column; 
+        padding: 25px 15px; 
+        flex-shrink: 0; 
+        box-shadow: 4px 0 20px rgba(0,0,0,0.15); 
+        z-index: 1000; 
+      }
+      
+      /* LOGO AJUSTADA (SEM BORDA BRANCA) */
+      .sidebar-logo { text-align: center; margin-bottom: 35px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+      .sidebar-logo img { 
+        width: 85px; height: 85px; 
+        display: block; margin: 0 auto 12px auto; 
+        border-radius: 50%; 
+        border: 2px solid var(--brand-gold); /* Borda Dourada Fina */
+        padding: 0; /* Remove espaço branco */
+        background-color: white;
+        object-fit: cover; /* Preenche todo o circulo */
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        transition: transform 0.3s ease;
+      }
+      .sidebar-logo img:hover { transform: scale(1.05); box-shadow: 0 0 20px rgba(226, 160, 97, 0.6); }
+      .sidebar-brand-text { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px; color: var(--brand-gold); font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+
+      /* NAVIGATION */
+      .nav-btn { 
+        background: transparent; border: none; 
+        color: rgba(255,255,255,0.65); 
+        padding: 12px 20px; 
+        text-align: left; 
+        border-radius: 8px; 
+        margin-bottom: 6px; 
+        transition: all 0.2s ease; 
+        width: 100%; 
+        display: flex; align-items: center; cursor: pointer; font-size: 0.9rem; font-weight: 600;
+      }
+      .nav-btn:hover { background: rgba(255, 255, 255, 0.08); color: white; padding-left: 25px; }
+      .nav-btn.active { 
+        background: var(--brand-gold); 
+        color: var(--brand-blue); 
+        font-weight: 800; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      }
+      .nav-btn i { margin-right: 12px; font-size: 1.1rem; }
+
+      /* --- CONTEÚDO --- */
+      .main-content { flex-grow: 1; overflow-y: auto; overflow-x: hidden; padding: 25px 35px; }
+      
+      .card-panel { 
+        background: white; 
+        border-radius: 12px; 
+        box-shadow: 0 2px 15px rgba(0,0,0,0.03); 
+        padding: 25px; 
+        margin-bottom: 25px; 
+        border-top: 3px solid transparent; 
+        transition: transform 0.2s;
+      }
+      
+      .border-gold { border-top-color: var(--brand-gold) !important; }
+      .border-blue { border-top-color: var(--brand-blue) !important; }
+
+      h4 { color: var(--brand-blue); font-weight: 800; letter-spacing: -0.5px; margin: 0; }
+      .text-gold { color: var(--brand-gold) !important; } 
+      .text-blue { color: var(--brand-blue) !important; }
+
+      /* FILTROS E INPUTS BONITOS */
+      .form-label { 
+        font-family: 'Segoe UI', sans-serif;
+        font-size: 0.75rem; 
+        font-weight: 700; 
+        color: var(--brand-blue); 
+        text-transform: uppercase; 
+        letter-spacing: 0.05em; 
+        margin-bottom: 6px; 
+        display: block;
+      }
+      
+      .form-control, .form-select { 
+        border: 1px solid #e1e4e8; 
+        padding: 8px 12px; 
+        border-radius: 6px; 
+        font-size: 0.9rem; 
+        color: #495057;
+        background-color: #fff;
+        transition: all 0.2s;
+      }
+      .form-control:focus, .form-select:focus { 
+        border-color: var(--brand-gold); 
+        box-shadow: 0 0 0 3px rgba(226, 160, 97, 0.15); 
+        outline: none; 
+      }
+
+      /* BOTÕES DE MÊS (PÍLULAS) */
+      .month-selector-group {
+        display: flex;
+        background: #f0f2f5;
+        padding: 4px;
+        border-radius: 8px;
+        gap: 2px;
+      }
+      .month-btn {
+        border: none;
+        background: transparent;
+        padding: 6px 16px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #6c757d;
+        transition: all 0.2s;
+      }
+      .month-btn:hover { background: rgba(0,0,0,0.05); color: var(--brand-blue); }
+      .month-btn.active {
+        background: white;
+        color: var(--brand-blue);
+        font-weight: 800;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+      }
+
+      /* Botões Gerais */
+      .btn-custom { border: none; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; border-radius: 6px; padding: 10px 20px; transition: 0.3s; }
+      .btn-brand { background-color: var(--brand-blue); color: white; }
+      .btn-brand:hover { background-color: #001f35; color: var(--brand-gold); }
+      .btn-gold { background-color: var(--brand-gold); color: var(--brand-blue); }
+
+      .view-section { display: none; opacity: 0; animation: fadeIn 0.4s forwards; } 
+      .view-section.active { display: block; }
+      @keyframes fadeIn { to { opacity: 1; } }
+      .chart-box { height: 260px; position: relative; width: 100%; }
+
+      /* CALENDÁRIO */
+      .calendar-controls { 
+        display: flex; justify-content: space-between; align-items: center; 
+        background: white; border-bottom: 1px solid #eee; 
+        padding-bottom: 15px; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;
+      }
+      .calendar-container { display: flex; flex-wrap: wrap; gap: 20px; justify-content: flex-start; }
+      .month-wrapper { 
+        flex: 1 1 320px; max-width: 100%;
+        border: 1px solid #eff2f5; border-radius: 8px; overflow: hidden; background: #fff;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+      }
+      .month-header { background: var(--brand-blue); color: white; text-align: center; padding: 10px; font-weight: 700; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px; }
+      .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #f0f2f5; }
+      .calendar-day-name { background: #fff; color: #adb5bd; padding: 8px 0; text-align: center; font-weight: 700; font-size: 0.7rem; }
+      
+      .calendar-day-cell { 
+        min-height: 70px; padding: 5px; cursor: pointer; transition: 0.2s; position: relative; background: white; font-size: 0.9rem;
+      }
+      .calendar-day-cell:hover { z-index: 5; transform: scale(1.05); box-shadow: 0 5px 15px rgba(0,0,0,0.08); border-radius: 4px; }
+      
+      .cell-past { background: #f9f9f9; color: #ccc; }
+      .cell-future { background: #f4faff; color: var(--brand-blue); }
+      .cell-weekend { background: #343a40 !important; color: #6c757d !important; border: 1px solid #454d55; opacity: 0.95; }
+      .cell-today { background: #e3f2fd !important; color: var(--brand-blue) !important; font-weight: 800; box-shadow: inset 0 0 0 2px var(--brand-blue); }
+      .cell-holiday { background: #fff !important; color: var(--brand-gold) !important; border: 2px solid var(--brand-gold) !important; font-weight: bold; }
+      .calendar-day-cell.selected { background: var(--brand-gold) !important; color: white !important; transform: scale(1.05); z-index: 10; box-shadow: 0 5px 15px rgba(226,160,97,0.5); }
+      
+      .day-has-routine { width: 6px; height: 6px; background: var(--brand-gold); border-radius: 50%; position: absolute; bottom: 8px; right: 8px; }
+      .calendar-day-cell.selected .day-has-routine { background: white; }
+
+      /* Lista Cards */
+      .routine-card { border-left: 5px solid #e9ecef; transition: 0.2s; display: flex; justify-content: space-between; align-items: center; background: #fcfcfc; margin-bottom: 8px; border-radius: 6px; }
+      .routine-card:hover { transform: translateX(3px); background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+      .routine-card.active { border-left-color: var(--brand-gold); background: #fff8f0; }
+      .routine-card.done { border-left-color: #198754; opacity: 0.8; }
+      .routine-card.log-item { border-left-color: var(--brand-blue); background: #f0f7ff; cursor: pointer; }
+      
+      /* Popup */
+      #notification-popup { position: fixed; top: 25px; right: 25px; z-index: 9999; background: white; border-left: 5px solid var(--brand-gold); box-shadow: 0 10px 30px rgba(0,0,0,0.15); padding: 20px; border-radius: 8px; display: none; width: 320px; animation: slideIn 0.5s; }
+      @keyframes slideIn { from { transform: translateX(120%); } to { transform: translateX(0); } }
+
+      /* Responsivo Mobile */
+      @media (max-width: 768px) {
+        .app-container { flex-direction: column; height: auto; overflow: auto; }
+        .sidebar { width: 100%; padding: 15px; flex-direction: row; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .sidebar-logo { margin: 0; padding: 0; border: none; display: flex; align-items: center; gap: 10px; }
+        .sidebar-logo img { width: 45px; height: 45px; margin: 0; border-width: 1px; }
+        .sidebar-brand-text { display: none; }
+        .nav-btn { width: auto; padding: 8px 12px; margin: 0; font-size: 0.8rem; }
+        .nav-btn span { display: none; }
+        .nav-btn i { margin: 0; font-size: 1.2rem; }
+        .main-content { padding: 15px; overflow: visible; }
+        .calendar-controls { flex-direction: column; align-items: flex-start; }
+      }
+    </style>
+  </head>
+  <body>
+
+    <div id="notification-popup">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <strong class="text-blue"><i class="bi bi-bell-fill text-gold me-2"></i>Lembrete</strong>
+        <button type="button" class="btn-close small" onclick="this.parentElement.parentElement.style.display='none'"></button>
+      </div>
+      <div class="text-secondary small" id="notif-msg"></div>
+    </div>
+
+    <div class="modal fade" id="modalDetalhesLog" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+          <div class="modal-header bg-light">
+            <h5 class="modal-title text-blue fw-bold">Detalhes do Atendimento</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-4">
+            <label class="form-label text-gold">Colaborador</label>
+            <p class="fs-5 fw-bold text-dark mb-3" id="detalheSolicitante">...</p>
+            <label class="form-label text-blue">Assunto</label>
+            <p class="mb-3" id="detalheAssunto">...</p>
+            <div class="bg-light p-3 rounded border-start border-4 border-warning">
+              <label class="form-label mb-1">Ação Realizada</label>
+              <p class="mb-0 text-dark fst-italic" id="detalheAcao" style="white-space: pre-wrap;">...</p>
+            </div>
+            <div class="mt-4 d-flex justify-content-between text-muted small border-top pt-3">
+               <span id="detalheData"><i class="bi bi-calendar"></i> ...</span>
+               <span id="detalheTempo" class="fw-bold text-blue"><i class="bi bi-clock"></i> ...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="modalNovaRotina" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+          <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title text-blue fw-bold">Nova Rotina</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body pt-2">
+            <p class="text-muted small mb-4">Para: <span id="modalDateDisplay" class="fw-bold text-dark"></span></p>
+            <form id="formModalRotina">
+              <input type="hidden" id="modalDataInput">
+              <div class="mb-3">
+                <label class="form-label">Nome da Atividade</label>
+                <input type="text" class="form-control" id="modalNome" required placeholder="Ex: Verificar E-mails">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Horário</label>
+                <input type="time" class="form-control" id="modalHora" required>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer border-0">
+             <button type="button" class="btn btn-light text-secondary btn-sm fw-bold" data-bs-dismiss="modal">CANCELAR</button>
+             <button type="button" class="btn btn-brand btn-sm px-4" onclick="salvarRotinaModal()">SALVAR</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="app-container">
+      
+      <div class="sidebar">
+        <div class="sidebar-logo">
+           <img src="https://i.imgur.com/dgk9WN6.png" alt="Logo">
+           <div class="sidebar-brand-text">Gestão N2<br>Acessórias</div>
+        </div>
+        
+        <button class="nav-btn active" id="btn-registro" onclick="navegar('registro')">
+          <i class="bi bi-pencil-square"></i> <span>Registro</span>
+        </button>
+        <button class="nav-btn" id="btn-rotinas" onclick="navegar('rotinas')">
+          <i class="bi bi-calendar-check-fill"></i> <span>Rotinas</span>
+        </button>
+        <button class="nav-btn" id="btn-provas" onclick="navegar('provas')">
+          <i class="bi bi-mortarboard-fill"></i> <span>Avaliações</span>
+        </button>
+        <button class="nav-btn" id="btn-dashboard" onclick="navegar('dashboard')">
+          <i class="bi bi-graph-up-arrow"></i> <span>Dashboard</span>
+        </button>
+        
+        <div style="margin-top: auto; padding-top:20px; border-top: 1px solid rgba(255,255,255,0.1); text-align:center;">
+          <small style="opacity:0.5; font-size:0.65rem;">&copy; 2026 N2 System</small>
+        </div>
+      </div>
+
+      <div class="main-content">
+        
+        <div id="view-registro" class="view-section active">
+          <div class="d-flex align-items-center mb-4">
+             <div style="width: 5px; height: 30px; background: var(--brand-gold); margin-right: 12px; border-radius: 4px;"></div>
+             <h4>Novo Atendimento</h4>
+          </div>
+          <div class="card-panel" style="max-width: 1000px;">
+            <form id="formAtendimento">
+              <div class="row g-4">
+                <div class="col-md-6"><label class="form-label">Solicitante</label><select class="form-select sel-colaborador" name="solicitante" onchange="atualizarEquipe('formAtendimento')" required><option value="" disabled selected>Carregando...</option></select></div>
+                <div class="col-md-6"><label class="form-label" style="opacity:0.7">Equipe</label><input type="text" class="form-control" style="background:#f8f9fa" name="equipe" readonly></div>
+                <div class="col-md-6"><label class="form-label">Categoria</label><select class="form-select" name="categoria" required><option>Dúvida Técnica</option><option>Processo Administrativo</option><option>Gestão de Conflito</option><option>Erro de Sistema</option></select></div>
+                <div class="col-md-6"><label class="form-label">Resolução</label><select class="form-select" name="resolucao" required><option>Orientação Rápida</option><option>Acompanhamento</option><option>Execução (Fiz por ele)</option></select></div>
+                <div class="col-12"><label class="form-label">Assunto</label><input type="text" class="form-control" name="assunto" required></div>
+                <div class="col-md-3"><label class="form-label">Tempo (min)</label><input type="number" class="form-control" name="tempo" min="1" required></div>
+                <div class="col-md-9"><label class="form-label">Ação Tomada</label><input type="text" class="form-control" name="acao" required></div>
+                <div class="col-12 mt-4"><button type="button" id="btnSalvarReg" class="btn btn-custom btn-brand w-100 py-3" onclick="submeterForm('Atendimento')"><i class="bi bi-save me-2"></i>SALVAR REGISTRO</button><div id="msgAtendimento" class="mt-2 text-center small fw-bold"></div></div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div id="view-rotinas" class="view-section">
+            <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+                <div class="d-flex align-items-center">
+                   <div style="width: 5px; height: 30px; background: var(--brand-gold); margin-right: 12px; border-radius: 4px;"></div>
+                   <h4>Calendário de Atividades</h4>
+                </div>
+                
+                <div class="d-flex align-items-center gap-3 bg-white px-3 py-2 rounded-3 shadow-sm border">
+                   <div class="text-end">
+                     <span class="d-block text-gold fw-bold text-uppercase" style="font-size:0.65rem;">Tempo Total</span>
+                     <span class="h5 m-0 text-blue fw-bold" id="kpiTempoTotal">0h 0m</span>
+                   </div>
+                   <i class="bi bi-clock-history fs-3 text-gold"></i>
+                </div>
+            </div>
+
+            <div class="row g-4">
+              <div class="col-lg-8">
+                <div class="card-panel p-4 h-100">
+                  <div class="calendar-controls">
+                    <div class="d-flex align-items-center gap-2">
+                       <button class="btn btn-sm btn-light border" onclick="mudarMes(-1)"><i class="bi bi-chevron-left"></i></button>
+                       <span class="fw-bold text-blue text-uppercase" id="calMainTitle" style="min-width:140px; text-align:center; font-size:0.9rem"></span>
+                       <button class="btn btn-sm btn-light border" onclick="mudarMes(1)"><i class="bi bi-chevron-right"></i></button>
+                    </div>
+                    
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                      <div class="d-flex align-items-center gap-2">
+                        <label class="form-label mb-0 me-1">Ver:</label>
+                        <input type="hidden" id="selNumMeses" value="1">
+                        <div class="month-selector-group">
+                          <button class="month-btn active" onclick="setMeses(1, this)">1</button>
+                          <button class="month-btn" onclick="setMeses(3, this)">3</button>
+                          <button class="month-btn" onclick="setMeses(6, this)">6</button>
+                          <button class="month-btn" onclick="setMeses(12, this)">12</button>
+                        </div>
+                      </div>
+
+                      <div class="d-flex align-items-center gap-2">
+                        <label class="form-label mb-0">Colaborador:</label>
+                        <select id="calFiltroColaborador" class="form-select form-select-sm sel-colaborador" style="min-width:140px;" onchange="salvarEstado(); renderCalendar()">
+                          <option value="all">Todos</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="calendar-container" id="calendarContainer"></div>
+                  
+                  <div class="d-flex gap-4 mt-4 justify-content-center flex-wrap small text-muted">
+                    <div class="d-flex align-items-center gap-2"><span style="width:10px;height:10px;background:#e3f2fd;border:2px solid #002B49;border-radius:2px"></span> Hoje</div>
+                    <div class="d-flex align-items-center gap-2"><span style="width:10px;height:10px;background:#f4faff;border:1px solid #002B49;border-radius:2px"></span> Futuro</div>
+                    <div class="d-flex align-items-center gap-2"><span style="width:10px;height:10px;background:#343a40;border-radius:2px"></span> Fim de Semana</div>
+                    <div class="d-flex align-items-center gap-2"><span style="width:10px;height:10px;background:#fff;border:2px solid #E2A061;border-radius:2px"></span> Feriado</div>
+                    <div class="d-flex align-items-center gap-2"><span style="width:8px;height:8px;background:#E2A061;border-radius:50%"></span> Atividade</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-lg-4">
+                <div class="card-panel border-gold h-100 d-flex flex-column">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="text-blue m-0" id="selectedDateTitle">Selecione um dia</h5>
+                    <button class="btn btn-sm btn-brand shadow-sm px-3" id="btnAddRotina" onclick="abrirModalRotina()" disabled><i class="bi bi-plus-lg"></i> Nova</button>
+                  </div>
+                  <hr class="opacity-25">
+                  <div id="listaRotinasDia" class="flex-grow-1 pe-1" style="overflow-y: auto;">
+                    <div class="text-center text-muted mt-5 opacity-50">
+                      <i class="bi bi-calendar-event" style="font-size: 3rem;"></i>
+                      <p class="mt-2 small">Selecione uma data para<br>visualizar os registros.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+        </div>
+
+        <div id="view-provas" class="view-section">
+          <div class="d-flex align-items-center mb-4">
+             <div style="width: 5px; height: 30px; background: var(--brand-gold); margin-right: 12px; border-radius: 4px;"></div>
+             <h4>Lançar Nota</h4>
+          </div>
+          <div class="card-panel border-gold" style="max-width: 1000px;">
+            <form id="formProva">
+              <div class="row g-4">
+                <div class="col-md-6"><label class="form-label">Colaborador</label><select class="form-select sel-colaborador" name="colaborador" onchange="atualizarEquipe('formProva')" required><option value="" disabled selected>Carregando...</option></select></div>
+                <div class="col-md-6"><label class="form-label text-muted">Equipe</label><input type="text" class="form-control" style="background:#f8f9fa" name="equipe" readonly></div>
+                <div class="col-md-8"><label class="form-label">Avaliação</label><input type="text" class="form-control" name="nomeProva" placeholder="Ex: Teste Técnico" required></div>
+                <div class="col-md-4"><label class="form-label">Nota (0-100)</label><input type="number" class="form-control" name="nota" step="0.1" required></div>
+                <div class="col-12 mt-4"><button type="button" id="btnSalvarProv" class="btn btn-custom btn-gold w-100 py-3" onclick="submeterForm('Prova')"><i class="bi bi-check-circle-fill me-2"></i>LANÇAR NOTA</button><div id="msgProva" class="mt-2 text-center small fw-bold"></div></div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div id="view-dashboard" class="view-section">
+          <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+            <div class="d-flex align-items-center">
+               <div style="width: 5px; height: 30px; background: var(--brand-gold); margin-right: 12px; border-radius: 4px;"></div>
+               <h4>Dashboard Analítico</h4>
+            </div>
+            <button class="btn btn-outline-dark btn-sm fw-bold" onclick="carregarDados()"><i class="bi bi-arrow-clockwise me-1"></i> ATUALIZAR</button>
+          </div>
+          
+          <div class="card-panel p-4 mb-4">
+            <div class="row g-3 align-items-end">
+              <div class="col-6 col-md-2"><span class="form-label">Ano</span><select id="fAno" class="form-select form-select-sm" onchange="salvarEstado(); aplicarFiltros()"></select></div>
+              <div class="col-6 col-md-2"><span class="form-label">Trimestre</span><select id="fTri" class="form-select form-select-sm" onchange="salvarEstado(); aplicarFiltros()"><option value="all">Todos</option><option value="1">1º Trim (Q1)</option><option value="2">2º Trim (Q2)</option><option value="3">3º Trim (Q3)</option><option value="4">4º Trim (Q4)</option></select></div>
+              <div class="col-6 col-md-2"><span class="form-label">Mês</span><select id="fMes" class="form-select form-select-sm" onchange="salvarEstado(); aplicarFiltros()"></select></div>
+              <div class="col-6 col-md-3"><span class="form-label">Equipe</span><select id="fEq" class="form-select form-select-sm" onchange="salvarEstado(); aplicarFiltros()"><option value="all">Todas</option></select></div>
+              <div class="col-12 col-md-3"><span class="form-label">Colaborador</span><select id="fCol" class="form-select form-select-sm" onchange="salvarEstado(); aplicarFiltros()"><option value="all">Todos</option></select></div>
+            </div>
+          </div>
+
+          <div class="row g-4 mb-4">
+            <div class="col-6 col-md-3"><div class="card-panel border-blue text-center p-3 h-100 d-flex flex-column justify-content-center"><h6 class="text-secondary small fw-bold mb-2">CHAMADOS</h6><h2 class="fw-bold text-blue m-0" id="kpiTotal">...</h2></div></div>
+            <div class="col-6 col-md-3"><div class="card-panel border-gold text-center p-3 h-100 d-flex flex-column justify-content-center"><h6 class="text-secondary small fw-bold mb-2">HORAS</h6><h2 class="fw-bold text-gold m-0" id="kpiHoras">...</h2></div></div>
+            <div class="col-6 col-md-3"><div class="card-panel border-blue text-center p-3 h-100 d-flex flex-column justify-content-center"><h6 class="text-secondary small fw-bold mb-2">TMA</h6><h2 class="fw-bold text-blue m-0" id="kpiTMA">...</h2></div></div>
+            <div class="col-6 col-md-3"><div class="card-panel border-gold text-center p-3 h-100 d-flex flex-column justify-content-center" style="background:#fffaf4"><h6 class="text-secondary small fw-bold mb-2">MÉDIA NOTAS</h6><h2 class="fw-bold text-gold m-0" id="kpiNota">...</h2></div></div>
+          </div>
+          <div class="row g-4">
+            <div class="col-lg-8"><div class="card-panel"><h6 class="fw-bold small mb-4 text-blue">TOP CATEGORIAS</h6><div class="chart-box"><canvas id="cBar"></canvas></div></div></div>
+            <div class="col-lg-4"><div class="card-panel"><h6 class="fw-bold small mb-4 text-blue">RESOLUÇÃO</h6><div class="chart-box"><canvas id="cPie"></canvas></div></div></div>
+            <div class="col-lg-8"><div class="card-panel"><h6 class="fw-bold small mb-4 text-blue">EVOLUÇÃO</h6><div class="chart-box"><canvas id="cLine"></canvas></div></div></div>
+            <div class="col-lg-4"><div class="card-panel"><h6 class="fw-bold small mb-4 text-gold">PROVAS</h6><div class="chart-box"><canvas id="cProvas"></canvas></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let cache = { equipe: [], logs: [], provas: [], rotinas: [] };
+      let charts = {};
+      const colors = { blue: '#002B49', gold: '#E2A061', list: ['#002B49', '#E2A061', '#5B7C99', '#D98E45', '#1F4E79'] };
+
+      let activeRoutineId = null; let startTime = null; let timerInterval = null; let notifInterval = null;
+      let calStartDate = new Date(); let selectedDateStr = null;      
+      const FERIADOS_FIXOS = ["01-01", "04-21", "05-01", "09-07", "10-12", "11-02", "11-15", "12-25"];
+
+      window.onload = function() { 
+        calStartDate.setDate(1); carregarDados();
+        notifInterval = setInterval(verificarNotificacoes, 60000);
+      };
+
+      // --- FILTROS DE MES (BOTOES) ---
+      function setMeses(num, btn) {
+          document.getElementById('selNumMeses').value = num;
+          document.querySelectorAll('.month-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          salvarEstado(); renderCalendar();
+      }
+
+      function salvarEstado() {
+        let activeView = document.querySelector('.view-section.active').id.replace('view-', '');
+        let dashFilters = {
+            ano: getVal('fAno'), tri: getVal('fTri'), mes: getVal('fMes'), eq: getVal('fEq'), col: getVal('fCol')
+        };
+        let calFilters = {
+            colaborador: getVal('calFiltroColaborador'),
+            numMeses: getVal('selNumMeses')
+        };
+        localStorage.setItem('gestaoN2State', JSON.stringify({ view: activeView, dashFilters, calFilters }));
+      }
+
+      function restaurarEstado() {
+        const saved = localStorage.getItem('gestaoN2State');
+        if (!saved) return;
+        const state = JSON.parse(saved);
+        if(state.dashFilters) {
+            setVal('fAno', state.dashFilters.ano); setVal('fTri', state.dashFilters.tri);
+            setVal('fMes', state.dashFilters.mes); setVal('fEq', state.dashFilters.eq);
+            setVal('fCol', state.dashFilters.col); aplicarFiltros();
+        }
+        if(state.calFilters) {
+            setVal('calFiltroColaborador', state.calFilters.colaborador);
+            setVal('selNumMeses', state.calFilters.numMeses);
+            // Atualiza botoes visuais dos meses
+            document.querySelectorAll('.month-btn').forEach(b => b.classList.remove('active'));
+            let activeBtn = Array.from(document.querySelectorAll('.month-btn')).find(b => b.innerText == state.calFilters.numMeses);
+            if(activeBtn) activeBtn.classList.add('active');
+            
+            renderCalendar(); 
+        }
+        if(state.view) navegar(state.view);
+      }
+      function setVal(id, val) { let el = document.getElementById(id); if(el && val) el.value = val; }
+      function getVal(id) { let el = document.getElementById(id); return el ? el.value : ''; }
+
+      function navegar(tela) {
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        let btn = document.getElementById('btn-'+tela); if(btn) btn.classList.add('active');
+        document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+        document.getElementById('view-' + tela).classList.add('active');
+        if(tela === 'dashboard') aplicarFiltros();
+        if(tela === 'rotinas') renderCalendar();
+        salvarEstado();
+      }
+
+      function carregarDados() {
+        google.script.run.withSuccessHandler(d => {
+          if(!d) return; cache = d;
+          popularSelectsGenerico('.sel-colaborador', d.equipe, 'colaborador');
+          
+          let calFilter = document.getElementById('calFiltroColaborador');
+          let optAll = new Option('Todos', 'all');
+          if(calFilter.options.length > 0 && calFilter.options[0].value !== 'all') { calFilter.add(optAll, 0); calFilter.value = 'all'; }
+          
+          popFiltros(d); restaurarEstado();
+          if(document.getElementById('view-rotinas').classList.contains('active') && selectedDateStr) selecionarDia(selectedDateStr);
+        }).getDadosIniciais();
+      }
+
+      function popularSelectsGenerico(sel, dados, campo) {
+        document.querySelectorAll(sel).forEach(s => {
+          let old = s.value; 
+          let hasAll = s.querySelector('option[value="all"]');
+          s.innerHTML = hasAll ? '<option value="all">Todos</option>' : '<option value="" disabled selected>Selecione...</option>';
+          if(dados) dados.forEach(i=>{let o=new Option(i[campo], i[campo]); s.add(o)});
+          if(old && s.querySelector(`option[value="${old}"]`)) s.value=old;
+        });
+      }
+
+      function atualizarEquipe(formId) {
+        let f = document.getElementById(formId);
+        let p = cache.equipe.find(x => x.colaborador === f.querySelector('.sel-colaborador').value);
+        f.querySelector('input[name="equipe"]').value = p ? p.lider : "";
+      }
+
+      function submeterForm(tipo) {
+        let formId='form'+tipo, btnId=(tipo==='Atendimento'?'btnSalvarReg':'btnSalvarProv'), msgId='msg'+tipo;
+        let form=document.getElementById(formId), btn=document.getElementById(btnId);
+        if(!form.checkValidity()) { form.reportValidity(); return; }
+        
+        let txt=btn.innerHTML; 
+        btn.disabled=true; btn.innerHTML='<span class="spinner-border spinner-border-sm"></span> SALVANDO...';
+        
+        let obj={}; new FormData(form).forEach((v,k)=>obj[k]=v);
+        let fn = tipo==='Atendimento'?'salvarAtendimento':'salvarProva';
+        
+        google.script.run.withSuccessHandler(res=>{
+          document.getElementById(msgId).innerHTML='<span class="text-success fw-bold">'+res+'</span>';
+          form.reset(); btn.disabled=false; btn.innerHTML=txt;
+          setTimeout(()=>document.getElementById(msgId).innerHTML='',3000);
+          carregarDados();
+        })[fn](obj);
+      }
+
+      // --- CALENDÁRIO OTIMIZADO ---
+      function mudarMes(delta) { calStartDate.setMonth(calStartDate.getMonth() + delta); renderCalendar(); }
+      function checkFeriado(mes, dia) { return FERIADOS_FIXOS.includes((mes+1).toString().padStart(2,'0') + "-" + dia.toString().padStart(2,'0')); }
+
+      function renderCalendar() {
+        const container = document.getElementById('calendarContainer');
+        const numMeses = parseInt(document.getElementById('selNumMeses').value);
+        const colabFilter = document.getElementById('calFiltroColaborador').value;
+        const mainTitle = document.getElementById('calMainTitle');
+        const monthsNames = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+        const diasSemana = ["D","S","T","Q","Q","S","S"];
+        
+        mainTitle.innerText = `${monthsNames[calStartDate.getMonth()]} ${calStartDate.getFullYear()}`;
+        container.innerHTML = "";
+
+        // OTIMIZAÇÃO: Set de datas ativas
+        let activeDates = new Set();
+        if(colabFilter === 'all') cache.rotinas.forEach(r => activeDates.add(r.data));
+        cache.logs.forEach(l => { if(colabFilter === 'all' || l.solicitante === colabFilter) activeDates.add(l.data.slice(0,10)); });
+
+        for (let i = 0; i < numMeses; i++) {
+           let currentMesDate = new Date(calStartDate); currentMesDate.setMonth(calStartDate.getMonth() + i);
+           let ano = currentMesDate.getFullYear(); let mes = currentMesDate.getMonth();
+
+           let wrapper = document.createElement('div'); wrapper.className = 'month-wrapper';
+           wrapper.innerHTML = `<div class="month-header">${monthsNames[mes]} ${ano}</div>`;
+           let grid = document.createElement('div'); grid.className = 'calendar-grid';
+
+           diasSemana.forEach(d => { let div = document.createElement('div'); div.className = "calendar-day-name"; div.innerText = d; grid.appendChild(div); });
+
+           let primeiroDia = new Date(ano, mes, 1).getDay(); let totalDias = new Date(ano, mes + 1, 0).getDate();
+           for(let j=0; j < primeiroDia; j++) { let b = document.createElement('div'); b.style.background = '#fbfbfb'; grid.appendChild(b); }
+
+           let hojeLocal = new Date(new Date().getTime() - (new Date().getTimezoneOffset()*60000)).toISOString().slice(0,10);
+
+           for(let d=1; d <= totalDias; d++) {
+              let div = document.createElement('div');
+              let isoDate = `${ano}-${(mes+1).toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
+              let diaSemana = new Date(ano, mes, d).getDay();
+              
+              let classes = "calendar-day-cell";
+              if (checkFeriado(mes, d)) classes += " cell-holiday";
+              else if (isoDate === hojeLocal) classes += " cell-today";
+              else if (diaSemana === 0 || diaSemana === 6) classes += " cell-weekend";
+              else if (isoDate < hojeLocal) classes += " cell-past";
+              else if (isoDate > hojeLocal) classes += " cell-future";
+              
+              if(isoDate === selectedDateStr) classes += " selected";
+              div.className = classes; div.onclick = () => selecionarDia(isoDate);
+
+              let html = `<span class="day-number">${d}</span>`;
+              if(activeDates.has(isoDate)) html += `<div class="day-has-routine"></div>`;
+              div.innerHTML = html; grid.appendChild(div);
+           }
+           wrapper.appendChild(grid); container.appendChild(wrapper);
+        }
+        calcularTempoTotalVisivel();
+      }
+
+      function calcularTempoTotalVisivel() {
+        let numMeses = parseInt(document.getElementById('selNumMeses').value);
+        let colabFilter = document.getElementById('calFiltroColaborador').value;
+        let inicio = new Date(calStartDate.getFullYear(), calStartDate.getMonth(), 1).toISOString().slice(0,10);
+        let fim = new Date(calStartDate.getFullYear(), calStartDate.getMonth() + numMeses, 0).toISOString().slice(0,10);
+
+        let totalMin = 0;
+        if(colabFilter === 'all') {
+            cache.rotinas.forEach(r => { if (r.data >= inicio && r.data <= fim && (r.status.includes('Conclui') || r.status.includes('Concluído'))) totalMin += parseInt(r.tempoGasto || 0); });
+        }
+        cache.logs.forEach(l => {
+           let d = l.data.slice(0,10);
+           if (d >= inicio && d <= fim && (colabFilter === 'all' || l.solicitante === colabFilter)) totalMin += parseInt(l.tempo || 0);
+        });
+
+        let hh = Math.floor(totalMin / 60); let mm = totalMin % 60;
+        document.getElementById('kpiTempoTotal').innerText = `${hh}h ${mm}m`;
+      }
+
+      function selecionarDia(isoDate) {
+        selectedDateStr = isoDate;
+        document.querySelectorAll('.calendar-day-cell').forEach(c => c.classList.remove('selected'));
+        let cell = document.querySelector(`.calendar-day-cell[data-date="${isoDate}"]`);
+        if(cell) cell.classList.add('selected');
+
+        let parts = isoDate.split('-');
+        document.getElementById('selectedDateTitle').innerText = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        document.getElementById('btnAddRotina').disabled = false;
+        renderListaDiaUnificada(isoDate);
+      }
+
+      function verDetalhesLog(index) {
+          let log = cache.logs[index]; if(!log) return;
+          document.getElementById('detalheSolicitante').innerText = log.solicitante;
+          document.getElementById('detalheAssunto').innerText = log.assunto;
+          document.getElementById('detalheAcao').innerText = log.acao || "N/A";
+          let dt = new Date(log.data);
+          document.getElementById('detalheData').innerHTML = `<i class="bi bi-calendar"></i> ` + dt.toLocaleDateString();
+          document.getElementById('detalheTempo').innerHTML = `<i class="bi bi-clock"></i> ` + log.tempo + ' min';
+          new bootstrap.Modal(document.getElementById('modalDetalhesLog')).show();
+      }
+
+      function renderListaDiaUnificada(dateStr) {
+        let lista = document.getElementById('listaRotinasDia');
+        let colabFilter = document.getElementById('calFiltroColaborador').value;
+        lista.innerHTML = '';
+
+        let combined = [];
+        if (colabFilter === 'all') combined = combined.concat(cache.rotinas.filter(r => r.data === dateStr).map(r => ({ ...r, tipo: 'rotina' })));
+
+        cache.logs.forEach((l, idx) => {
+           if(l.data.startsWith(dateStr)) {
+               if(colabFilter === 'all' || l.solicitante === colabFilter) {
+                   combined.push({
+                      id: 'log-'+idx, idxOriginal: idx, 
+                      hora: new Date(l.data).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}),
+                      nome: l.solicitante, status: l.assunto, tempo: l.tempo, tipo: 'log'
+                   });
+               }
+           }
+        });
+
+        combined.sort((a,b) => a.hora.localeCompare(b.hora));
+
+        if (combined.length === 0) {
+            lista.innerHTML = '<div class="text-center text-muted mt-5 opacity-50"><i class="bi bi-inbox fs-1"></i><p class="small mt-2">Sem atividades.</p></div>';
+            return;
+        }
+
+        combined.forEach(item => {
+            let isLog = item.tipo === 'log';
+            let isDone = isLog || item.status.includes('Conclui');
+            let isActive = activeRoutineId == item.id;
+            
+            let card = document.createElement('div');
+            card.className = `p-2 routine-card ${isLog ? 'log-item' : (isDone ? 'done' : '')} ${isActive ? 'active' : ''}`;
+            if(isLog) card.onclick = () => verDetalhesLog(item.idxOriginal);
+
+            let btnHtml = '';
+            if(isLog) btnHtml = `<i class="bi bi-eye-fill text-secondary opacity-50"></i>`;
+            else if(!isDone) {
+                if(isActive) btnHtml = `<button class="btn btn-danger btn-sm py-0 px-2" onclick="pararRotina('${item.id}')"><i class="bi bi-stop-fill"></i></button>`;
+                else btnHtml = `<button class="btn btn-success btn-sm py-0 px-2" onclick="iniciarRotina('${item.id}')" ${activeRoutineId?'disabled':''}><i class="bi bi-play-fill"></i></button>`;
+            } else btnHtml = `<i class="bi bi-check-circle-fill text-success"></i>`;
+
+            card.innerHTML = `
+                <div class="d-flex align-items-center gap-2 overflow-hidden w-100">
+                    <span class="badge ${isLog?'bg-primary':'bg-dark'} font-monospace" style="min-width:50px">${item.hora}</span>
+                    <div class="text-truncate flex-grow-1">
+                        <div class="fw-bold text-dark text-truncate" style="font-size:0.85rem">${item.nome}</div>
+                        <div class="small text-muted text-truncate" style="font-size:0.75rem">${item.status}</div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-shrink-0 ms-auto">
+                        <div id="timer-${item.id}" class="timer-display small text-blue">${isActive?'00:00':''}</div>
+                        ${item.tempo ? `<span class="badge bg-light text-dark border">${item.tempo}m</span>` : ''} 
+                        ${btnHtml}
+                    </div>
+                </div>
+            `;
+            lista.appendChild(card);
+        });
+      }
+
+      function abrirModalRotina() {
+        if(!selectedDateStr) return;
+        let parts = selectedDateStr.split('-');
+        document.getElementById('modalDateDisplay').innerText = `${parts[2]}/${parts[1]}`;
+        document.getElementById('modalDataInput').value = selectedDateStr;
+        new bootstrap.Modal(document.getElementById('modalNovaRotina')).show();
+      }
+
+      function salvarRotinaModal() {
+        let nome = document.getElementById('modalNome').value;
+        let hora = document.getElementById('modalHora').value;
+        let data = document.getElementById('modalDataInput').value;
+        if(!nome || !hora) return alert("Preencha todos os campos.");
+        bootstrap.Modal.getInstance(document.getElementById('modalNovaRotina')).hide();
+        google.script.run.withSuccessHandler(() => { carregarDados(); }).salvarNovaRotina({ nome, hora, data });
+      }
+
+      function iniciarRotina(id) {
+        if(activeRoutineId) return alert("Finalize a atividade atual primeiro.");
+        activeRoutineId = id; startTime = new Date(); renderListaDiaUnificada(selectedDateStr);
+        if(timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            let diff = new Date() - startTime;
+            let el = document.getElementById(`timer-${id}`);
+            if(el) el.innerText = new Date(diff).toISOString().slice(14,19);
+        }, 1000);
+      }
+
+      function pararRotina(id) {
+        if(timerInterval) clearInterval(timerInterval);
+        let diffMins = Math.max(1, Math.floor((new Date() - startTime) / 60000));
+        google.script.run.withSuccessHandler(() => {
+            activeRoutineId = null; startTime = null; carregarDados();
+        }).finalizarRotina({ id: id, tempoTotal: diffMins });
+      }
+
+      function verificarNotificacoes() {
+        let hojeStr = new Date(new Date().getTime() - (new Date().getTimezoneOffset()*60000)).toISOString().slice(0,10);
+        cache.rotinas.filter(r => r.data === hojeStr && !r.status.includes('Conclui')).forEach(r => {
+            let [h, m] = r.hora.split(':'); let dt = new Date(); dt.setHours(h, m, 0, 0);
+            let diff = (dt - new Date()) / 60000;
+            if (diff > 9 && diff <= 10.5) {
+                document.getElementById('notif-msg').innerHTML = `A rotina <b>${r.nome}</b> começa em 10 minutos!`;
+                document.getElementById('notification-popup').style.display = 'block';
+                setTimeout(() => document.getElementById('notification-popup').style.display = 'none', 10000);
+            }
+        });
+      }
+
+      // DASHBOARD
+      function popFiltros(d) {
+        let sa=document.getElementById('fAno'), se=document.getElementById('fEq'), sc=document.getElementById('fCol'), sm=document.getElementById('fMes');
+        sm.innerHTML='<option value="all">Todos</option>';
+        ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"].forEach((m,i)=>sm.add(new Option(m,i)));
+        
+        sa.innerHTML='<option value="all">Todos</option>'; [...new Set(d.logs.map(l=>new Date(l.data).getFullYear()))].sort().reverse().forEach(a=>{if(a)sa.add(new Option(a,a))});
+        se.innerHTML='<option value="all">Todas</option>'; [...new Set(d.equipe.map(e=>e.lider))].sort().forEach(l=>se.add(new Option(l,l)));
+        sc.innerHTML='<option value="all">Todos</option>'; d.equipe.forEach(c=>sc.add(new Option(c.colaborador,c.colaborador)));
+      }
+
+      function aplicarFiltros() {
+        let f={ ano:getVal('fAno'), tri:getVal('fTri'), mes:getVal('fMes'), eq:getVal('fEq'), col:getVal('fCol') };
+        renderDash(cache.logs.filter(x=>checar(x,f,'solicitante')), cache.provas.filter(x=>checar(x,f,'colaborador')));
+      }
+
+      function checar(item, f, campo) {
+        let dt=new Date(item.data);
+        if(f.ano!=='all' && dt.getFullYear()!=f.ano) return false;
+        if(f.mes!=='all' && dt.getMonth()!=f.mes) return false;
+        if(f.tri!=='all' && Math.floor(dt.getMonth()/3)+1 != f.tri) return false;
+        if(f.col!=='all' && item[campo]!==f.col) return false;
+        if(f.eq!=='all' && item.equipe!==f.eq) return false;
+        return true;
+      }
+
+      function renderDash(l, p) {
+        let tot=l.length, mins=l.reduce((a,b)=>a+(Number(b.tempo)||0),0);
+        document.getElementById('kpiTotal').innerText=tot; document.getElementById('kpiHoras').innerText=(mins/60).toFixed(1)+'h';
+        document.getElementById('kpiTMA').innerText=tot?(mins/tot).toFixed(0)+'m':'0'; document.getElementById('kpiNota').innerText=p.length?(p.reduce((a,b)=>a+(Number(b.nota)||0),0)/p.length).toFixed(1):'-';
+
+        let cats={}, ress={}, evols={}, tiposP={};
+        l.forEach(x => { cats[x.categoria]=(cats[x.categoria]||0)+1; ress[x.resolucao]=(ress[x.resolucao]||0)+1; evols[new Date(x.data).toLocaleDateString('pt-BR').slice(0,5)]=(evols[new Date(x.data).toLocaleDateString('pt-BR').slice(0,5)]||0)+1; });
+        p.forEach(x => { let n=x.nomeProva||"N/A"; tiposP[n]=(tiposP[n]||0)+1; });
+
+        draw('cBar', 'bar', Object.entries(cats).sort((a,b)=>b[1]-a[1]), 'CATEGORIAS');
+        draw('cPie', 'doughnut', Object.entries(ress), 'RESOLUÇÃO');
+        draw('cLine', 'line', Object.entries(evols), 'VOLUME');
+        draw('cProvas', 'doughnut', Object.entries(tiposP).sort((a,b)=>b[1]-a[1]), 'TIPOS');
+      }
+
+      function draw(id, type, arr, lbl) {
+        let ctx=document.getElementById(id).getContext('2d'); if(charts[id]) charts[id].destroy();
+        charts[id] = new Chart(ctx, {
+          type: type, data: { labels: arr.map(x=>x[0]), datasets: [{ label: lbl, data: arr.map(x=>x[1]), backgroundColor: type==='line'?colors.gold:colors.list, borderColor: type==='line'?colors.gold:'#fff', borderWidth: 2, tension: 0.3, fill: type==='line' }] },
+          options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom', display:type!=='bar'}}, indexAxis: id==='cBar'?'y':'x', scales: { x:{grid:{display:false}}, y:{beginAtZero:true, grid:{borderDash:[2,2]}} } }
+        });
+      }
+    </script>
+  </body>
+</html>
