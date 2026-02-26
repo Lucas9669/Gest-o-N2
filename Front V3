@@ -269,13 +269,84 @@
       let currentEventsOpen = [];
       let currentEventsDone = [];
 
+      // [MELHORIA] Variáveis para o sistema de Alerta
+      let notifiedEvents = new Set();
+      let audioCtx = null;
+
       window.onload = function() {
         renderCalendar();
         loadColaboradores();
         loadEquipes();
         loadDashboard();
         loadCalendarEvents();
+        
+        // [MELHORIA] Solicita permissão para notificações de Desktop ao carregar a página
+        if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+          Notification.requestPermission();
+        }
+
+        // [MELHORIA] Inicia o loop de checagem a cada 10 segundos
+        setInterval(checkAlarms, 10000); 
       };
+
+      // [MELHORIA] Exige interação do usuário para desbloquear o Áudio no navegador
+      document.addEventListener('click', () => {
+        if(!audioCtx) {
+           const AudioContext = window.AudioContext || window.webkitAudioContext;
+           if(AudioContext) audioCtx = new AudioContext();
+        }
+        if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      }, { once: true });
+
+      // [MELHORIA] Função para Tocar o Som (Bip Suave)
+      function playNotificationSound() {
+        try {
+          if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          if (audioCtx.state === 'suspended') audioCtx.resume();
+          const osc = audioCtx.createOscillator();
+          const gainNode = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
+          osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.3);
+          gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+          osc.connect(gainNode);
+          gainNode.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.3);
+        } catch(e) { console.log("Áudio não suportado ou bloqueado pelo navegador."); }
+      }
+
+      // [MELHORIA] Função que checa as rotinas agendadas para o momento exato
+      function checkAlarms() {
+        if (!calendarEventsCache || calendarEventsCache.length === 0) return;
+        
+        let now = new Date();
+        let todayIso = now.getFullYear() + '-' + ('0'+(now.getMonth()+1)).slice(-2) + '-' + ('0'+now.getDate()).slice(-2);
+        let currentTimeStr = ('0'+now.getHours()).slice(-2) + ':' + ('0'+now.getMinutes()).slice(-2);
+
+        calendarEventsCache.forEach(ev => {
+          // Verifica se é uma rotina de hoje, pendente, e do horário exato (Hora:Minuto)
+          if (ev.status !== "Concluído" && ev.dateIso === todayIso && ev.time === currentTimeStr && ev.type === "Rotina") {
+             if (!notifiedEvents.has(ev.id)) {
+                 notifiedEvents.add(ev.id); // Registra para não apitar duas vezes
+                 
+                 playNotificationSound(); // Toca o Bip
+                 
+                 // Dispara a notificação Desktop (se permitido)
+                 if ("Notification" in window && Notification.permission === "granted") {
+                     new Notification("🚨 Alerta de Rotina!", {
+                         body: `Hora de realizar: "${ev.title}" (Programado para ${ev.time})`,
+                         icon: "https://fonts.gstatic.com/s/i/short-term/release/materialsymbolsoutlined/notifications_active/default/24px.svg"
+                     });
+                 } else {
+                     // Plano B: Se não tiver permissão desktop, abre nosso modal nativo
+                     showModal("🚨 Alerta de Rotina!", `A rotina "${ev.title}" está programada para agora (${ev.time})!`, 'alert');
+                 }
+             }
+          }
+        });
+      }
 
       // MODAIS GERAIS
       function showLoader() { document.getElementById('loader').classList.remove('hidden'); }
@@ -310,7 +381,7 @@
           actions.appendChild(btnConfirm);
         } else {
           modalIcon.innerText = title.includes('Erro') ? "error" : "check_circle";
-          modalIcon.className = title.includes('Erro') ? "material-symbols-outlined text-3xl text-red-500" : "material-symbols-outlined text-3xl text-green-500";
+          modalIcon.className = title.includes('Erro') ? "material-symbols-outlined text-3xl text-red-500" : (title.includes('Alerta') ? "material-symbols-outlined text-3xl text-orange-500" : "material-symbols-outlined text-3xl text-green-500");
 
           const btnOk = document.createElement('button');
           btnOk.className = "px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-semibold transition";
