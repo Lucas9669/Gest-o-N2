@@ -71,7 +71,7 @@ function salvarAtendimento(form) {
   } catch (e) { throw new Error(e.message); }
 }
 
-// Salvar Rotina com Suporte à Recorrência (Bulk Insert Otimizado) + [MELHORIA] Pular FDS e Feriados
+// Salvar Rotina com Suporte à Recorrência (Bulk Insert Otimizado) + Pular FDS e Feriados
 function salvarRotina(form) {
   try {
     var sheet = getSheetByKey("ROTINAS_PLANEJADAS");
@@ -88,7 +88,7 @@ function salvarRotina(form) {
     var currentDate = new Date(baseDate);
     var rowsToAppend = [];
     
-    // [MELHORIA] Lista de feriados no Back-End para validação inteligente
+    // Lista de feriados no Back-End para validação inteligente
     var feriados = ["01/01", "21/04", "01/05", "07/09", "12/10", "02/11", "15/11", "25/12"];
     
     while (currentDate <= endDate && execCount <= maxExecutions) {
