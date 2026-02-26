@@ -1,0 +1,268 @@
+/**
+ * SISTEMA DE GESTÃO N2 - OPERAÇÃO CS
+ * Back Engine - Google Apps Script (v8 - Com Conclusão de Tarefas)
+ */
+
+// 🟢 Servir HTML
+function doGet() {
+  return HtmlService.createTemplateFromFile('Index')
+    .evaluate()
+    .setTitle('Gestão N2 - CS Operation')
+    .setSandboxMode(HtmlService.SandboxMode.IFRAME)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+function getSheetByKey(sheetName) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) throw new Error("Aba '" + sheetName + "' não encontrada.");
+  return sheet;
+}
+
+// 👥 OBTER COLABORADORES
+function getColaboradores() {
+  try {
+    var sheet = getSheetByKey("COLABORADORES_ONGOING");
+    var data = sheet.getDataRange().getValues();
+    var output = [];
+    for (var i = 1; i < data.length; i++) {
+      var nome = data[i][0];
+      var statusRaw = data[i][3]; 
+      var status = statusRaw ? statusRaw.toString().trim().toUpperCase() : "";
+      if (nome && status === "ATIVO") {
+        output.push({ nome: nome, equipe: data[i][1] });
+      }
+    }
+    output.sort(function(a, b) { return a.nome.localeCompare(b.nome); });
+    return output;
+  } catch (e) { return []; }
+}
+
+// 📋 OBTER EQUIPES
+function getEquipesList() {
+  try {
+    var sheet = getSheetByKey("COLABORADORES_ONGOING");
+    var range = sheet.getRange("B2");
+    var rule = range.getDataValidation();
+    if (rule != null && rule.getCriteriaType() === SpreadsheetApp.DataValidationCriteria.VALUE_IN_LIST) {
+      return rule.getCriteriaValues()[0];
+    }
+    return ["Bruna Santos", "Carina Andrade", "Edimarley Oliveira"];
+  } catch (e) {
+    return ["Bruna Santos", "Carina Andrade", "Edimarley Oliveira"];
+  }
+}
+
+// 💾 SALVAR E ATUALIZAR
+function salvarNovoColaborador(form) {
+  try {
+    var sheet = getSheetByKey("COLABORADORES_ONGOING");
+    sheet.appendRow([form.nome, form.equipe, new Date(), "Ativo"]);
+    return { success: true, message: "Colaborador cadastrado! ✅" };
+  } catch (e) { throw new Error(e.message); }
+}
+
+function salvarAtendimento(form) {
+  try {
+    var sheet = getSheetByKey("ATENDIMENTOS_REGISTRO");
+    sheet.appendRow([new Date(), form.solicitante, form.sistema, form.categoria, form.descricao, form.tempo]);
+    return { success: true, message: "Atendimento registrado! 🎧" };
+  } catch (e) { throw new Error(e.message); }
+}
+
+// Salvar Rotina com Suporte à Recorrência (Bulk Insert Otimizado) + Pular FDS e Feriados + Prioridade
+function salvarRotina(form) {
+  try {
+    var sheet = getSheetByKey("ROTINAS_PLANEJADAS");
+    
+    // Tratamento de Data forçando o meio-dia para evitar bug de fuso horário
+    var baseDate = new Date(form.dataRotina + 'T12:00:00');
+    var endDate = form.dataFim ? new Date(form.dataFim + 'T12:00:00') : baseDate;
+    var recorrencia = form.recorrencia || "none";
+    var prioridade = form.prioridade || "2 Normal"; // [MELHORIA] Tratamento de Prioridade
+    
+    // Trava de segurança para não rodar um loop infinito sem querer (Máx 365 execuções)
+    var maxExecutions = 365;
+    var execCount = 0;
+    
+    var currentDate = new Date(baseDate);
+    var rowsToAppend = [];
+    
+    // Lista de feriados no Back-End para validação inteligente
+    var feriados = ["01/01", "21/04", "01/05", "07/09", "12/10", "02/11", "15/11", "25/12"];
+    
+    while (currentDate <= endDate && execCount <= maxExecutions) {
+      var d = new Date(currentDate);
+      
+      // Valida Finais de Semana e Feriados
+      var isWeekend = (d.getDay() === 0 || d.getDay() === 6);
+      var dayStr = ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2);
+      var isHoliday = feriados.indexOf(dayStr) !== -1;
+      
+      // Só empurra para a planilha se for dia útil (não fds e não feriado)
+      if (!isWeekend && !isHoliday) {
+        var dateStr = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+        // Monta a linha: 0=Data, 1=Titulo, 2=Hora Inicio, 3=Hora Fim, 4=Tempo, 5=Status, 6=ID, 7=Prioridade
+        rowsToAppend.push([dateStr, form.titulo, form.horaInicio, "", "", "Pendente", Utilities.getUuid(), prioridade]);
+      }
+      
+      if (recorrencia === "none") break;
+      
+      if (recorrencia === "daily") {
+        currentDate.setDate(currentDate.getDate() + 1);
+      } else if (recorrencia === "weekly") {
+        currentDate.setDate(currentDate.getDate() + 7);
+      } else if (recorrencia === "monthly") {
+        currentDate.setMonth(currentDate.getMonth() + 1);
+      } else {
+        break;
+      }
+      execCount++;
+    }
+    
+    // Gravação em Massa para garantir velocidade 🚀
+    if (rowsToAppend.length > 0) {
+      sheet.getRange(sheet.getLastRow() + 1, 1, rowsToAppend.length, rowsToAppend[0].length).setValues(rowsToAppend);
+      var msg = rowsToAppend.length > 1 ? rowsToAppend.length + " Rotinas agendadas em lote! 🔄📅" : "Rotina agendada! 📅";
+      return { success: true, message: msg };
+    } else {
+      // Caso a única data escolhida tenha sido um FDS ou Feriado
+      return { success: false, message: "Nenhuma rotina criada. As datas selecionadas caem em finais de semana ou feriados. 🚫" };
+    }
+  } catch (e) { throw new Error(e.message); }
+}
+
+function concluirRotina(id) {
+  try {
+    var sheet = getSheetByKey("ROTINAS_PLANEJADAS");
+    var data = sheet.getDataRange().getValues();
+    
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][6] == id) {
+        var row = i + 1; 
+        
+        var now = new Date();
+        var horaFim = ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
+        sheet.getRange(row, 4).setValue(horaFim);
+
+        var horaInicioRaw = data[i][2];
+        if (horaInicioRaw) {
+          var startMins = 0;
+          if (horaInicioRaw instanceof Date) {
+            startMins = horaInicioRaw.getHours() * 60 + horaInicioRaw.getMinutes();
+          } else {
+            var parts = horaInicioRaw.toString().split(':');
+            startMins = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+          }
+          var endMins = now.getHours() * 60 + now.getMinutes();
+          var diff = endMins - startMins;
+          if (diff < 0) diff += 24 * 60; 
+          sheet.getRange(row, 5).setValue(diff);
+        }
+        
+        sheet.getRange(row, 6).setValue("Concluído");
+        
+        return { success: true, message: "Rotina concluída com sucesso! ✅" };
+      }
+    }
+    return { success: false, message: "Rotina não encontrada." };
+  } catch (e) {
+    throw new Error("Erro ao concluir: " + e.message);
+  }
+}
+
+function getDashboardData() {
+  try {
+    var sheetAtend = getSheetByKey("ATENDIMENTOS_REGISTRO");
+    var dataAtend = sheetAtend.getDataRange().getValues();
+    var totalAtendimentos = Math.max(0, dataAtend.length - 1);
+    var tempoTotal = 0;
+    var categoriasCount = {};
+    for (var i = 1; i < dataAtend.length; i++) {
+      var tempo = parseFloat(dataAtend[i][5]) || 0;
+      var cat = dataAtend[i][3];
+      tempoTotal += tempo;
+      if(cat) {
+        if(!categoriasCount[cat]) categoriasCount[cat] = 0;
+        categoriasCount[cat]++;
+      }
+    }
+    var tma = totalAtendimentos > 0 ? (tempoTotal / totalAtendimentos).toFixed(1) : 0;
+    return { total: totalAtendimentos, tma: tma, categorias: categoriasCount };
+  } catch (e) { return { total: 0, tma: 0, categorias: {} }; }
+}
+
+function getCalendarEvents() {
+  var events = [];
+  
+  function formatDateISO(dateObj) {
+    if (!dateObj) return "";
+    var d = new Date(dateObj);
+    return d.getFullYear() + '-' + ('0' + (d.getMonth()+1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  }
+
+  var teamMap = {};
+  try {
+    var colabSheet = getSheetByKey("COLABORADORES_ONGOING");
+    var colabData = colabSheet.getDataRange().getValues();
+    for(var c=1; c<colabData.length; c++) {
+      if(colabData[c][0]) teamMap[colabData[c][0]] = colabData[c][1]; 
+    }
+  } catch(e) {}
+
+  try {
+    var sheetRotinas = getSheetByKey("ROTINAS_PLANEJADAS");
+    var dataRotinas = sheetRotinas.getDataRange().getValues();
+    for (var i = 1; i < dataRotinas.length; i++) {
+      if (dataRotinas[i][0]) {
+        var horaStr = "00:00";
+        if(dataRotinas[i][2] instanceof Date) {
+           horaStr = ('0'+dataRotinas[i][2].getHours()).slice(-2) + ':' + ('0'+dataRotinas[i][2].getMinutes()).slice(-2);
+        } else if(dataRotinas[i][2]) {
+           horaStr = dataRotinas[i][2].toString();
+        }
+        
+        // [MELHORIA] Lendo a Prioridade (Coluna 7, caso não exista, assume "2 Normal")
+        var prioStr = dataRotinas[i][7] ? dataRotinas[i][7].toString() : "2 Normal";
+
+        events.push({
+          id: dataRotinas[i][6],
+          dateIso: formatDateISO(dataRotinas[i][0]),
+          title: dataRotinas[i][1],
+          time: horaStr,
+          status: dataRotinas[i][5] || "Pendente",
+          type: "Rotina",
+          collaborator: "Geral",
+          team: "Geral", 
+          duration: parseFloat(dataRotinas[i][4]) || 0,
+          priority: prioStr
+        });
+      }
+    }
+  } catch (e) {}
+
+  try {
+    var sheetAtend = getSheetByKey("ATENDIMENTOS_REGISTRO");
+    var dataAtend = sheetAtend.getDataRange().getValues();
+    for (var j = 1; j < dataAtend.length; j++) {
+      if (dataAtend[j][0]) {
+        var colabName = dataAtend[j][1];
+        events.push({
+          id: null, 
+          dateIso: formatDateISO(dataAtend[j][0]),
+          title: dataAtend[j][1] + " (" + dataAtend[j][2] + ")",
+          time: new Date(dataAtend[j][0]).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}),
+          status: "Concluído",
+          type: "Atendimento",
+          collaborator: colabName,
+          team: teamMap[colabName] || "Sem Equipe", 
+          duration: parseFloat(dataAtend[j][5]) || 0,
+          priority: "1 Máxima" // [MELHORIA] Atendimentos sempre são Prioridade Máxima!
+        });
+      }
+    }
+  } catch (e) {}
+
+  return events;
+}
