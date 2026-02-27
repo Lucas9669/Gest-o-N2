@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+      body { font-family: 'Poppins', sans-serif; background-color: #f0f2f5; }
+      
+      .cal-cell {
+        min-height: 80px;
+        padding: 6px;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        cursor: pointer;
+        background-color: white;
+        transition: all 0.2s ease;
+      }
+      .cal-cell:hover { z-index: 10; transform: translateY(-2px) scale(1.02); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+      .week-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem; text-align: center; font-size: 0.75rem; font-weight: 700; color: #9ca3af; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
+      .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem; margin-bottom: 2rem; }
+      
+      .nav-item { 
+        transition: all 0.3s ease; 
+        border-left: 4px solid transparent; 
+        color: #cbd5e1;
+      }
+      .nav-item:hover:not(.active) { 
+        background-color: rgba(255, 255, 255, 0.05); 
+        color: white; 
+      }
+      .nav-item.active { 
+        background-color: #f0f2f5; 
+        color: #0B2B5E !important; 
+        font-weight: 600; 
+        border-left: 4px solid #C8A153; 
+        border-radius: 0 24px 24px 0; 
+        margin-right: 16px;
+        box-shadow: -5px 0px 15px rgba(0,0,0,0.05);
+      }
+      .nav-item.active .material-symbols-outlined { color: #C8A153; }
+      
+      .fade-in { animation: fadeIn 0.4s ease-out; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+      
+      @keyframes spin-slow { 100% { transform: rotate(360deg); } }
+      .animate-spin-slow { animation: spin-slow 2.5s linear infinite; }
+
+      input, select, textarea { transition: all 0.2s; }
+      input:focus, select:focus, textarea:focus { border-color: #C8A153 !important; box-shadow: 0 0 0 3px rgba(200, 161, 83, 0.2) !important; outline: none; }
+    </style>
+  </head>
+  <body class="h-screen flex overflow-hidden">
+
+    <div id="custom-modal" class="hidden fixed inset-0 bg-[#0B2B5E]/60 z-[100] flex items-center justify-center fade-in backdrop-blur-sm">
+      <div class="bg-white rounded-2xl shadow-2xl w-96 p-8 transform transition-all">
+        <div class="flex items-center gap-3 mb-4" id="modal-header-container">
+           <span id="modal-icon" class="material-symbols-outlined text-4xl">info</span>
+           <h3 id="modal-title" class="text-xl font-bold text-[#0B2B5E]">Aviso</h3>
+        </div>
+        <p id="modal-message" class="text-gray-600 mb-8 text-sm leading-relaxed"></p>
+        <div id="modal-actions" class="flex justify-end gap-3">
+        </div>
+      </div>
+    </div>
+
+    <div id="rotina-modal" class="hidden fixed inset-0 bg-[#0B2B5E]/60 z-[100] flex items-center justify-center fade-in backdrop-blur-sm">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 transform transition-all">
+        <div class="flex items-center justify-between mb-6 border-b pb-4">
+           <h3 class="text-xl font-bold text-[#0B2B5E] flex items-center gap-2">
+             <span class="material-symbols-outlined text-[#C8A153]">event_note</span> Nova Rotina
+           </h3>
+           <button onclick="closeRotinaModal()" class="text-gray-400 hover:text-red-500 transition">
+             <span class="material-symbols-outlined">close</span>
+           </button>
+        </div>
+        <form id="form-rotina" onsubmit="handleRotina(event)" class="flex flex-col gap-5">
+           <div>
+             <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Título da Rotina</label>
+             <input type="text" name="titulo" class="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-sm" placeholder="Ex: Reunião de Alinhamento" required>
+           </div>
+           <div class="grid grid-cols-2 gap-5">
+             <div>
+               <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Data</label>
+               <input type="date" name="dataRotina" id="input-data-rotina" class="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-sm text-gray-700" required>
+             </div>
+             <div>
+               <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Início</label>
+               <input type="time" name="horaInicio" class="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-sm text-gray-700" required>
+             </div>
+           </div>
+           
+           <div class="grid grid-cols-2 gap-5">
+             <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Prioridade</label>
+                <select name="prioridade" class="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-sm text-gray-700">
+                  <option value="1 Máxima">🔴 1 Máxima</option>
+                  <option value="2 Normal" selected>🔵 2 Normal</option>
+                  <option value="3 Secundária">🟢 3 Secundária</option>
+                </select>
+             </div>
+             <div>
+                <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Repetição</label>
+                <select name="recorrencia" class="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-sm text-gray-700" onchange="document.getElementById('div-data-fim-modal').style.display = this.value === 'none' ? 'none' : 'block'">
+                  <option value="none">Não Repete</option>
+                  <option value="daily">Diária</option>
+                  <option value="weekly">Semanal</option>
+                  <option value="monthly">Mensal</option>
+                </select>
+             </div>
+           </div>
+           
+           <div id="div-data-fim-modal" style="display: none;">
+              <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Até Quando?</label>
+              <input type="date" name="dataFim" class="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 text-sm text-gray-700">
+           </div>
+           
+           <div class="flex justify-end gap-3 mt-4 pt-6 border-t">
+             <button type="button" onclick="closeRotinaModal()" class="px-5 py-2.5 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-bold transition">Cancelar</button>
+             <button type="submit" class="px-5 py-2.5 text-white bg-[#C8A153] hover:bg-[#b58f43] rounded-xl text-sm font-bold flex items-center gap-2 transition shadow-lg shadow-[#C8A153]/30">
+               <span class="material-symbols-outlined text-sm">save</span> Salvar Rotina
+             </button>
+           </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="loader" class="hidden absolute inset-0 bg-[#f0f2f5]/80 z-50 flex items-center justify-center flex-col backdrop-blur-md">
+      <span class="material-symbols-outlined text-[#C8A153] animate-spin-slow" style="font-size: 64px;">hourglass_empty</span>
+      <p class="text-[#0B2B5E] font-bold mt-4 tracking-widest uppercase text-sm">Processando...</p>
+    </div>
+
+    <aside class="w-72 bg-[#0B2B5E] shadow-2xl flex flex-col justify-between z-10 hidden md:flex text-white">
+      <div>
+        <div class="h-32 flex flex-col items-center justify-center border-b border-white/10 pt-4 pb-2">
+          <div class="w-14 h-14 rounded-full flex items-center justify-center shadow-lg mb-3 overflow-hidden border-2 border-[#C8A153] bg-white">
+            <img src="https://i.imgur.com/dgk9WN6.png" alt="Logo Gestão" class="w-full h-full object-cover">
+          </div>
+          <h1 class="text-md font-bold text-white tracking-widest uppercase text-center">Gestão N2 <span class="text-[#C8A153]">CS</span></h1>
+        </div>
+
+        <nav class="mt-8 space-y-2">
+          <button onclick="showSection('dashboard')" id="nav-dashboard" class="nav-item flex items-center px-8 py-3.5 w-full text-left">
+            <span class="material-symbols-outlined mr-4 text-xl">analytics</span> 
+            <span class="font-medium text-sm">Dashboard Analítico</span>
+          </button>
+          
+          <button onclick="showSection('atendimentos')" id="nav-atendimentos" class="nav-item flex items-center px-8 py-3.5 w-full text-left">
+            <span class="material-symbols-outlined mr-4 text-xl">support_agent</span> 
+            <span class="font-medium text-sm">Registro de Atend.</span>
+          </button>
+          
+          <button onclick="showSection('rotinas')" id="nav-rotinas" class="nav-item flex items-center px-8 py-3.5 w-full text-left">
+            <span class="material-symbols-outlined mr-4 text-xl">calendar_month</span> 
+            <span class="font-medium text-sm">Rotinas e Calendário</span>
+          </button>
+          
+          <button onclick="showSection('colaborador')" id="nav-colaborador" class="nav-item flex items-center px-8 py-3.5 w-full text-left">
+            <span class="material-symbols-outlined mr-4 text-xl">person_add</span> 
+            <span class="font-medium text-sm">Novo Colaborador</span>
+          </button>
+        </nav>
+      </div>
+
+      <div class="p-6 border-t border-white/10 space-y-4 mt-auto">
+        
+        <div>
+           <p class="text-[10px] text-[#C8A153] font-bold uppercase tracking-wider mb-2">Acessos Rápidos</p>
+           <div class="grid grid-cols-2 gap-2">
+             <a href="https://app.acessorias.com/" target="_blank" class="flex items-center justify-center bg-white/5 hover:bg-[#C8A153] text-white text-[10px] font-bold py-2 rounded-lg transition border border-white/10 hover:border-[#C8A153]">ACESSÓRIAS</a>
+             <a href="https://app.komunic.net/" target="_blank" class="flex items-center justify-center bg-white/5 hover:bg-[#C8A153] text-white text-[10px] font-bold py-2 rounded-lg transition border border-white/10 hover:border-[#C8A153]">KOMUNIC</a>
+             <a href="https://acessorias.desk.blip.ai/chat" target="_blank" class="flex items-center justify-center bg-white/5 hover:bg-[#C8A153] text-white text-[10px] font-bold py-2 rounded-lg transition border border-white/10 hover:border-[#C8A153]">BLIP</a>
+             <a href="https://acessorias.sensedata.io/customer_task_redirect_view" target="_blank" class="flex items-center justify-center bg-white/5 hover:bg-[#C8A153] text-white text-[10px] font-bold py-2 rounded-lg transition border border-white/10 hover:border-[#C8A153]">SENSE DATA</a>
+           </div>
+        </div>
+
+        <div class="bg-white/5 rounded-xl p-5 border border-white/5">
+          <p class="text-[10px] text-[#C8A153] font-bold uppercase tracking-wider mb-1">Status Operacional</p>
+          <div class="flex items-end mt-1">
+            <span class="text-3xl font-extrabold text-white leading-none" id="sla-display">--%</span>
+            <span class="text-xs text-gray-400 mb-1 ml-2">Meta: 90%</span>
+          </div>
+          <div class="w-full bg-[#0B2B5E] border border-white/10 h-2 rounded-full mt-3 overflow-hidden">
+            <div class="bg-[#C8A153] h-full rounded-full" style="width: 90%"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto p-10 relative">
+
+      <section id="dashboard" class="hidden fade-in space-y-8">
+        
+        <div class="flex justify-between items-end mb-2">
+          <div>
+            <h2 class="text-4xl font-extrabold text-[#0B2B5E] flex items-center gap-3">
+              <span class="material-symbols-outlined text-[40px] text-[#C8A153]">donut_small</span> Visão Geral
+            </h2>
+          </div>
+          <div class="text-right hidden sm:block">
+            <h3 class="text-xl font-bold text-[#0B2B5E]">Conquistando a excelência:</h3>
+            <p class="text-sm text-gray-500 font-medium">superando os desafios da sua Operação</p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-4 bg-white p-5 rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-100 items-center justify-between">
+          <div class="flex items-center gap-2 text-sm font-bold text-[#0B2B5E] uppercase tracking-wide">
+            <span class="material-symbols-outlined text-[#C8A153] text-xl">tune</span> Filtrar Dados
+          </div>
+          <div class="flex flex-wrap gap-4">
+            
+            <div class="relative flex items-center group gap-1">
+              <select id="dash-filter-month" onchange="loadDashboard()" class="px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-700 font-semibold cursor-pointer focus:border-[#C8A153] focus:ring-[#C8A153]">
+                <option value="all">🗓️ Todos os Meses</option>
+                <option value="0">📅 Janeiro</option>
+                <option value="1">📅 Fevereiro</option>
+                <option value="2">📅 Março</option>
+                <option value="3">📅 Abril</option>
+                <option value="4">📅 Maio</option>
+                <option value="5">📅 Junho</option>
+                <option value="6">📅 Julho</option>
+                <option value="7">📅 Agosto</option>
+                <option value="8">📅 Setembro</option>
+                <option value="9">📅 Outubro</option>
+                <option value="10">📅 Novembro</option>
+                <option value="11">📅 Dezembro</option>
+              </select>
+              <span class="material-symbols-outlined text-[#C8A153] cursor-help text-lg opacity-60 hover:opacity-100 transition">info</span>
+              <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-3 py-1.5 bg-[#0B2B5E] text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">Filtra os dados e gráficos do Dashboard pelo mês selecionado.</div>
+            </div>
+
+            <div class="relative flex items-center group gap-1">
+              <select id="dash-filter-period" onchange="loadDashboard()" class="px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-700 font-semibold cursor-pointer focus:border-[#C8A153] focus:ring-[#C8A153]">
+                <option value="all">⏳ Todo o Período</option>
+                <option value="month">📍 Este Mês Atual</option>
+                <option value="quarter">📊 Este Trimestre</option>
+                <option value="semester">📈 Este Semestre</option>
+                <option value="year">📆 Este Ano</option>
+              </select>
+              <span class="material-symbols-outlined text-[#C8A153] cursor-help text-lg opacity-60 hover:opacity-100 transition">info</span>
+              <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-3 py-1.5 bg-[#0B2B5E] text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">Filtra a visualização por blocos de tempo maiores.</div>
+            </div>
+            
+            <div class="relative flex items-center group gap-1">
+              <select id="dash-filter-equipe" onchange="loadDashboard()" class="px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-700 font-semibold w-44 cursor-pointer focus:border-[#C8A153] focus:ring-[#C8A153]">
+                <option value="all">🏢 Todas Equipes</option>
+              </select>
+              <span class="material-symbols-outlined text-[#C8A153] cursor-help text-lg opacity-60 hover:opacity-100 transition">info</span>
+              <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-3 py-1.5 bg-[#0B2B5E] text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">Mostra somente resultados e atendimentos da Equipe selecionada.</div>
+            </div>
+
+            <div class="relative flex items-center group gap-1">
+              <select id="dash-filter-collab" onchange="loadDashboard()" class="px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-700 font-semibold w-44 cursor-pointer focus:border-[#C8A153] focus:ring-[#C8A153]">
+                <option value="all">👥 Todos Colab.</option>
+              </select>
+              <span class="material-symbols-outlined text-[#C8A153] cursor-help text-lg opacity-60 hover:opacity-100 transition">info</span>
+              <div class="absolute bottom-full right-0 mb-2 w-max px-3 py-1.5 bg-[#0B2B5E] text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">Isola os dados para a performance de um Colaborador específico.</div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div class="bg-gradient-to-br from-[#0B2B5E] to-[#153975] p-6 rounded-[20px] shadow-xl shadow-blue-900/20 text-white relative overflow-hidden group">
+            <div class="relative z-10">
+              <p class="text-sm font-medium opacity-90 tracking-wide text-gray-300">Adoção Global</p>
+              <h3 class="text-4xl font-extrabold mt-2 text-[#C8A153]" id="kpi-total">0</h3>
+              <p class="text-xs mt-3 text-white flex items-center gap-1 font-semibold"><span class="material-symbols-outlined text-[14px]">trending_up</span> Atendimentos Totais</p>
+            </div>
+            <span class="material-symbols-outlined absolute -right-2 top-1/2 -translate-y-1/2 text-7xl opacity-10 group-hover:scale-110 transition-transform duration-300">add_circle</span>
+          </div>
+
+          <div class="bg-gradient-to-br from-[#C8A153] to-[#b08d46] p-6 rounded-[20px] shadow-xl shadow-yellow-700/20 text-white relative overflow-hidden group">
+            <div class="relative z-10">
+              <p class="text-sm font-medium opacity-90 tracking-wide text-[#0B2B5E]">TMA Operação</p>
+              <h3 class="text-4xl font-extrabold mt-2 text-white"><span id="kpi-tma">0</span><span class="text-xl font-normal opacity-90 ml-1">min</span></h3>
+              <p class="text-xs mt-3 text-[#0B2B5E] flex items-center gap-1 font-bold"><span class="material-symbols-outlined text-[14px]">timer</span> Tempo Médio</p>
+            </div>
+            <span class="material-symbols-outlined absolute -right-2 top-1/2 -translate-y-1/2 text-7xl opacity-20 group-hover:scale-110 transition-transform duration-300 text-[#0B2B5E]">forum</span>
+          </div>
+
+          <div class="bg-gradient-to-br from-[#1e293b] to-[#0f172a] p-6 rounded-[20px] shadow-xl shadow-slate-900/30 text-white relative overflow-hidden group">
+            <div class="relative z-10">
+              <p class="text-sm font-medium opacity-90 tracking-wide text-gray-400">Retenção Diária</p>
+              <h3 class="text-4xl font-extrabold mt-2" id="kpi-hoje">0</h3>
+              <p class="text-xs mt-3 text-gray-300 flex items-center gap-1 font-semibold"><span class="material-symbols-outlined text-[14px]">today</span> Fluxo Hoje</p>
+            </div>
+            <span class="material-symbols-outlined absolute -right-2 top-1/2 -translate-y-1/2 text-7xl opacity-20 group-hover:scale-110 transition-transform duration-300 animate-spin-slow text-[#C8A153]">blur_on</span>
+          </div>
+
+          <div class="bg-gradient-to-br from-[#174287] to-[#0a234f] p-6 rounded-[20px] shadow-xl shadow-blue-800/20 text-white relative overflow-hidden group">
+            <div class="relative z-10">
+              <p class="text-sm font-medium opacity-90 tracking-wide text-gray-300">Sistema Destaque</p>
+              <h3 class="text-2xl font-extrabold mt-4 truncate text-white" id="kpi-top-sys">-</h3>
+              <p class="text-xs mt-3 text-[#C8A153] flex items-center gap-1 font-semibold"><span class="material-symbols-outlined text-[14px]">emoji_events</span> Mais acionado</p>
+            </div>
+            <span class="material-symbols-outlined absolute -right-2 top-1/2 -translate-y-1/2 text-7xl opacity-10 group-hover:scale-110 transition-transform duration-300">emoji_events</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="bg-white p-8 rounded-[20px] shadow-lg shadow-gray-200/50 border border-gray-100 flex flex-col items-center relative">
+            <h4 class="text-lg font-bold text-[#0B2B5E] w-full flex items-center gap-2 mb-6"><span class="material-symbols-outlined text-[#C8A153]">pie_chart</span> Maior Volume</h4>
+            <div class="relative w-full max-w-[280px] aspect-square flex items-end justify-center pb-4">
+              <canvas id="chart-sistemas" class="absolute inset-0"></canvas>
+              <div class="absolute bottom-8 flex flex-col items-center">
+                <span class="text-xs text-gray-400 font-bold uppercase tracking-widest">Liderança</span>
+                <span class="text-4xl font-extrabold text-[#0B2B5E] mt-1" id="gauge-center-text">100%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white p-8 rounded-[20px] shadow-lg shadow-gray-200/50 border border-gray-100 lg:col-span-2">
+            <h4 class="text-lg font-bold text-[#0B2B5E] mb-6 flex items-center gap-2"><span class="material-symbols-outlined text-[#C8A153]">chat</span> Engajamento e Volume</h4>
+            <div class="relative h-[260px] w-full">
+              <canvas id="chart-evolucao"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-6">
+          <div class="bg-white p-8 rounded-[20px] shadow-lg shadow-gray-200/50 border border-gray-100 relative">
+            <div class="flex justify-between items-center mb-8">
+              <h4 class="text-lg font-bold text-[#0B2B5E] flex items-center gap-2"><span class="material-symbols-outlined text-[#C8A153]">view_timeline</span> Atendimentos por Categoria</h4>
+              <span class="material-symbols-outlined text-[#C8A153] bg-blue-50 p-2 rounded-xl border border-blue-100">camera</span>
+            </div>
+            <div class="relative h-72 w-full">
+              <canvas id="chart-categorias"></canvas>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <section id="atendimentos" class="hidden fade-in max-w-3xl mx-auto">
+        <h2 class="text-3xl font-extrabold text-[#0B2B5E] mb-8 flex items-center gap-3">
+          <span class="material-symbols-outlined text-4xl text-[#C8A153]">support_agent</span> 
+          Registro de Atendimento
+        </h2>
+        <div class="bg-white p-10 rounded-[20px] shadow-xl shadow-gray-200/50 border border-gray-100">
+          <form id="form-atendimento" onsubmit="handleAtendimento(event)">
+            
+            <div class="grid grid-cols-2 gap-8 mb-6">
+              <div>
+                <label class="block text-xs font-bold text-[#0B2B5E] uppercase tracking-wide mb-2">Solicitante</label>
+                <select id="input-solicitante" class="w-full p-3.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium cursor-pointer" required>
+                  <option value="">Carregando...</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-[#0B2B5E] uppercase tracking-wide mb-2">Sistema Base</label>
+                <select name="sistema" id="input-sistema" onchange="updateSubcategorias()" class="w-full p-3.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium cursor-pointer" required>
+                  <option value="" disabled selected>Selecione o Sistema...</option>
+                  <option value="KOMUNIC">KOMUNIC</option>
+                  <option value="ACESSÓRIAS">ACESSÓRIAS</option>
+                  <option value="AC DOC'S">AC DOC'S</option>
+                  <option value="OUTROS">OUTROS</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-8 mb-6">
+              <div id="div-subcategoria" class="hidden fade-in">
+                <label class="block text-xs font-bold text-[#0B2B5E] uppercase tracking-wide mb-2">Subcategoria (Módulo)</label>
+                <select name="subcategoria" id="input-subcategoria" class="w-full p-3.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium cursor-pointer"></select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-[#0B2B5E] uppercase tracking-wide mb-2">Categoria do Chamado</label>
+                <select name="categoria" class="w-full p-3.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium cursor-pointer" required>
+                  <option>Dúvida Técnica</option>
+                  <option>Login / Acesso</option>
+                  <option>Bug / Erro</option>
+                  <option>Dúvida de Processo</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
+              <div>
+                <label class="block text-xs font-bold text-[#0B2B5E] uppercase tracking-wide mb-2">Tempo Gasto (min)</label>
+                <input type="number" name="tempo" class="w-full p-3.5 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium" placeholder="Ex: 15" required>
+              </div>
+            </div>
+            
+            <div class="mb-10">
+              <label class="block text-xs font-bold text-[#0B2B5E] uppercase tracking-wide mb-2">Descrição Detalhada</label>
+              <textarea name="descricao" rows="4" class="w-full p-4 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium resize-none" placeholder="Relate o que foi tratado no chamado..."></textarea>
+            </div>
+            
+            <button type="submit" class="w-full bg-[#0B2B5E] text-white py-4 rounded-xl hover:bg-[#153975] flex justify-center items-center gap-2 transition shadow-xl shadow-[#0B2B5E]/30 font-bold text-lg">
+              <span class="material-symbols-outlined text-[#C8A153]">save</span> Registrar Atendimento
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <section id="colaborador" class="hidden fade-in max-w-xl mx-auto">
+        <h2 class="text-3xl font-extrabold text-[#0B2B5E] mb-8 flex items-center gap-3">
+          <span class="material-symbols-outlined text-4xl text-[#C8A153]">person_add</span> 
+          Onboarding Sistêmico
+        </h2>
+        <div class="bg-white p-10 rounded-[20px] shadow-xl shadow-gray-200/50 border border-gray-100">
+          <form id="form-colaborador" onsubmit="handleColaborador(event)">
+            <div class="mb-6">
+              <label class="block text-xs font-bold text-[#0B2B5E] uppercase tracking-wide mb-2">Nome Completo</label>
+              <input type="text" name="nome" class="w-full p-4 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium" required>
+            </div>
+            <div class="mb-10">
+              <label class="block text-xs font-bold text-[#0B2B5E] uppercase tracking-wide mb-2">Equipe</label>
+              <select name="equipe" id="input-equipe" class="w-full p-4 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-medium cursor-pointer">
+                <option value="">Carregando...</option>
+              </select>
+            </div>
+            <button type="submit" class="w-full bg-[#C8A153] text-white py-4 rounded-xl hover:bg-[#b08d46] transition shadow-xl shadow-[#C8A153]/30 font-bold text-lg flex items-center justify-center gap-2">
+              <span class="material-symbols-outlined text-[#0B2B5E]">how_to_reg</span> Efetivar Cadastro
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <section id="rotinas" class="hidden fade-in h-full flex flex-col">
+        
+        <div class="flex flex-wrap justify-between items-center mb-6 gap-4 bg-white p-5 rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-100">
+          <div class="flex items-center gap-4">
+            <h2 class="text-2xl font-extrabold text-[#0B2B5E] flex items-center gap-3">
+              <span class="material-symbols-outlined text-[#C8A153] text-3xl">calendar_month</span> Gestão de Rotinas
+            </h2>
+            <div class="flex items-center bg-gray-50 rounded-xl border border-gray-200 p-1">
+              <button onclick="changeMonth(-1)" class="p-1.5 hover:bg-white rounded-lg text-[#0B2B5E] transition shadow-sm"><span class="material-symbols-outlined">chevron_left</span></button>
+              <button onclick="changeMonth(1)" class="p-1.5 hover:bg-white rounded-lg text-[#0B2B5E] transition shadow-sm"><span class="material-symbols-outlined">chevron_right</span></button>
+            </div>
+          </div>
+          
+          <div class="bg-gradient-to-r from-[#0B2B5E] to-[#153975] px-6 py-3 rounded-xl shadow-lg text-white flex items-center gap-4">
+            <span class="material-symbols-outlined text-[#C8A153] text-3xl">timer</span>
+            <div class="flex flex-col">
+              <span class="text-[10px] uppercase font-bold text-gray-300 tracking-wider">Tempo Gasto (Visão)</span>
+              <span id="total-time-display" class="text-xl font-extrabold leading-tight">0h 0m</span>
+            </div>
+          </div>
+
+          <div class="flex gap-4">
+            
+            <div class="relative flex items-center group gap-1">
+              <select id="filter-period" onchange="renderCalendar()" class="p-3 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-700 font-semibold cursor-pointer focus:border-[#C8A153] focus:ring-[#C8A153]">
+                <option value="month">📅 Mensal</option>
+                <option value="quarter">📊 Trimestral</option>
+                <option value="semester">📈 Semestral</option>
+                <option value="year">📆 Anual</option>
+              </select>
+              <span class="material-symbols-outlined text-[#C8A153] cursor-help text-lg opacity-60 hover:opacity-100 transition">info</span>
+              <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-3 py-1.5 bg-[#0B2B5E] text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">Define o período (meses à frente) de exibição do calendário.</div>
+            </div>
+            
+            <div class="relative flex items-center group gap-1">
+              <select id="filter-equipe" onchange="renderCalendar()" class="p-3 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-700 font-semibold w-40 cursor-pointer focus:border-[#C8A153] focus:ring-[#C8A153]">
+                <option value="all">🏢 T. Equipes</option>
+              </select>
+              <span class="material-symbols-outlined text-[#C8A153] cursor-help text-lg opacity-60 hover:opacity-100 transition">info</span>
+              <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-3 py-1.5 bg-[#0B2B5E] text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">Exibe atividades de rotina associadas à equipe informada.</div>
+            </div>
+
+            <div class="relative flex items-center group gap-1">
+              <select id="filter-collab" onchange="renderCalendar()" class="p-3 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-700 font-semibold w-40 cursor-pointer focus:border-[#C8A153] focus:ring-[#C8A153]">
+                <option value="all">👥 T. Colab</option>
+              </select>
+              <span class="material-symbols-outlined text-[#C8A153] cursor-help text-lg opacity-60 hover:opacity-100 transition">info</span>
+              <div class="absolute bottom-full right-0 mb-2 w-max px-3 py-1.5 bg-[#0B2B5E] text-white text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">Traz os chamados e pendências de um único Colaborador para a tela.</div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-1 overflow-hidden min-h-[600px]">
+          
+          <div class="lg:col-span-2 bg-white rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-100 p-6 flex flex-col h-full overflow-y-auto" id="calendar-wrapper">
+          </div>
+
+          <div class="bg-white rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-100 flex flex-col overflow-hidden h-full">
+              
+             <div class="p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+               <div>
+                 <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Resumo do Dia</h3>
+                 <p id="selected-date-display" class="text-xl font-extrabold text-[#0B2B5E] mt-1 capitalize">Selecione um dia</p>
+               </div>
+               <button onclick="openRotinaModal()" class="bg-[#C8A153] text-[#0B2B5E] px-4 py-2.5 rounded-xl hover:bg-[#b08d46] text-sm font-bold flex items-center gap-2 transition shadow-lg shadow-[#C8A153]/30">
+                 <span class="material-symbols-outlined text-[18px]">add</span> Nova Rotina
+               </button>
+             </div>
+             
+             <div id="day-details-list" class="flex-1 overflow-y-auto p-0 flex flex-col bg-gray-50/50">
+               
+               <div class="flex-1 p-6 border-b border-gray-200 flex flex-col">
+                  <h4 class="text-xs font-bold text-red-600 uppercase tracking-widest mb-4 flex items-center">
+                    <span class="material-symbols-outlined text-[16px] mr-2">pending_actions</span> Em Aberto
+                  </h4>
+                  <div id="list-open" class="space-y-3 flex-1">
+                    <p class="text-sm text-gray-400 font-medium italic">Nenhuma pendência para este dia.</p>
+                  </div>
+               </div>
+
+               <div class="flex-1 p-6 flex flex-col">
+                  <h4 class="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-4 flex items-center">
+                    <span class="material-symbols-outlined text-[16px] mr-2">check_circle</span> Concluídos
+                  </h4>
+                  <div id="list-done" class="space-y-3 flex-1">
+                    <p class="text-sm text-gray-400 font-medium italic">Nenhum registro concluído.</p>
+                  </div>
+               </div>
+
+             </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <script>
+      let currentDate = new Date();
+      let selectedDateObj = new Date(); 
+      let calendarEventsCache = [];
+      let holidays = ["01/01", "21/04", "01/05", "07/09", "12/10", "02/11", "15/11", "25/12"]; 
+
+      const ITEMS_PER_PAGE = 5;
+      let currentPageOpen = 1;
+      let currentPageDone = 1;
+      let currentEventsOpen = [];
+      let currentEventsDone = [];
+
+      let notifiedEvents = new Set();
+      let audioCtx = null;
+
+      const subcategoriasMap = {
+        "KOMUNIC": [
+          "Meus dados", "Integrações", "Pessoas e contatos", "Atendimentos", 
+          "Histórico de atendimentos", "Usuários", "Cargos", "Organizações", 
+          "Departamentos", "Mensagens padrões", "Robôs", "Assunto do chamado", 
+          "Avaliações", "Respostas rápidas", "Horário de atendimento", "Feriados", 
+          "Tags", "Importar dados"
+        ],
+        "ACESSÓRIAS": [
+          "Usuários e permissões", "Departamentos", "Configurações gerais", 
+          "e-Contínuo", "Aplicativo e Área VIP", "Comunicados", "Dados do meu perfil", 
+          "Integrações", "Obrigações", "Feriados", "Grupos de obrigações", 
+          "Regimes tributários", "Relatórios", "Empresas", "Importar cadastros", 
+          "Lista de entregas", "Gestão de processos", "Solicitações", "Método APLA",
+          "Painel de Indicadores"
+        ],
+        "AC DOC'S": [
+          "Dashboard", "Configuração de matrizes", "Régua de cobrança", 
+          "Vencimento", "Inativação de matriz"
+        ],
+        "OUTROS": ["Outros"]
+      };
+
+      function updateSubcategorias() {
+        const sistema = document.getElementById('input-sistema').value;
+        const subcatSelect = document.getElementById('input-subcategoria');
+        const divSubcat = document.getElementById('div-subcategoria');
+
+        subcatSelect.innerHTML = '<option value="" disabled selected>Selecione o módulo...</option>';
+
+        if (subcategoriasMap[sistema]) {
+          const itensUnicos = [...new Set(subcategoriasMap[sistema])];
+          
+          itensUnicos.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item;
+            opt.textContent = item;
+            subcatSelect.appendChild(opt);
+          });
+          divSubcat.classList.remove('hidden');
+        } else {
+          divSubcat.classList.add('hidden');
+        }
+      }
+
+      // 🌟 [MELHORIA] Garantido que o Dashboard abra por padrão na inicialização
+      window.onload = function() {
+        showSection('dashboard'); // Força inicialização na tela de dashboard
+        renderCalendar();
+        loadColaboradores();
+        loadEquipes();
+        loadCalendarEvents();
+        
+        if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+          Notification.requestPermission();
+        }
+        setInterval(checkAlarms, 10000); 
+      };
+
+      document.addEventListener('click', () => {
+        if(!audioCtx) {
+           const AudioContext = window.AudioContext || window.webkitAudioContext;
+           if(AudioContext) audioCtx = new AudioContext();
+        }
+        if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      }, { once: true });
+
+      function playNotificationSound() {
+        try {
+          if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          if (audioCtx.state === 'suspended') audioCtx.resume();
+          const osc = audioCtx.createOscillator();
+          const gainNode = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, audioCtx.currentTime); 
+          osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.3);
+          gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+          osc.connect(gainNode);
+          gainNode.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.3);
+        } catch(e) { console.log("Áudio não suportado ou bloqueado pelo navegador."); }
+      }
+
+      function checkAlarms() {
+        if (!calendarEventsCache || calendarEventsCache.length === 0) return;
+        
+        let now = new Date();
+        let todayIso = now.getFullYear() + '-' + ('0'+(now.getMonth()+1)).slice(-2) + '-' + ('0'+now.getDate()).slice(-2);
+        let currentTimeStr = ('0'+now.getHours()).slice(-2) + ':' + ('0'+now.getMinutes()).slice(-2);
+
+        calendarEventsCache.forEach(ev => {
+          if (ev.status !== "Concluído" && ev.dateIso === todayIso && ev.time === currentTimeStr && ev.type === "Rotina") {
+             if (!notifiedEvents.has(ev.id)) {
+                 notifiedEvents.add(ev.id); 
+                 playNotificationSound(); 
+                 
+                 if ("Notification" in window && Notification.permission === "granted") {
+                     new Notification("🚨 Alerta de Rotina!", {
+                         body: `Hora de realizar: "${ev.title}" (Programado para ${ev.time} - Prioridade: ${ev.priority})`,
+                         icon: "https://fonts.gstatic.com/s/i/short-term/release/materialsymbolsoutlined/notifications_active/default/24px.svg"
+                     });
+                 } else {
+                     showModal("🚨 Alerta de Rotina!", `A rotina "${ev.title}" está programada para agora (${ev.time})!`, 'alert');
+                 }
+             }
+          }
+        });
+      }
+
+      function showLoader() { document.getElementById('loader').classList.remove('hidden'); }
+      function hideLoader() { document.getElementById('loader').classList.add('hidden'); }
+
+      function showModal(title, message, type, confirmCallback) {
+        document.getElementById('modal-title').innerText = title;
+        document.getElementById('modal-message').innerText = message;
+        
+        const modalIcon = document.getElementById('modal-icon');
+        const actions = document.getElementById('modal-actions');
+        actions.innerHTML = '';
+        
+        if (type === 'confirm') {
+          modalIcon.innerText = "help_outline";
+          modalIcon.className = "material-symbols-outlined text-4xl text-[#C8A153]";
+          
+          const btnCancel = document.createElement('button');
+          btnCancel.className = "px-6 py-2.5 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl text-sm font-bold transition";
+          btnCancel.innerText = "Cancelar";
+          btnCancel.onclick = () => document.getElementById('custom-modal').classList.add('hidden');
+          
+          const btnConfirm = document.createElement('button');
+          btnConfirm.className = "px-6 py-2.5 text-white bg-[#0B2B5E] hover:bg-[#153975] rounded-xl text-sm font-bold transition shadow-lg shadow-[#0B2B5E]/30";
+          btnConfirm.innerText = "Sim, Concluir";
+          btnConfirm.onclick = () => {
+            document.getElementById('custom-modal').classList.add('hidden');
+            if(confirmCallback) confirmCallback();
+          };
+          
+          actions.appendChild(btnCancel);
+          actions.appendChild(btnConfirm);
+        } else {
+          modalIcon.innerText = title.includes('Erro') ? "error" : "check_circle";
+          modalIcon.className = title.includes('Erro') ? "material-symbols-outlined text-4xl text-red-500" : (title.includes('Alerta') ? "material-symbols-outlined text-4xl text-[#C8A153]" : "material-symbols-outlined text-4xl text-emerald-500");
+
+          const btnOk = document.createElement('button');
+          btnOk.className = "px-8 py-2.5 text-white bg-[#0B2B5E] hover:bg-[#153975] rounded-xl text-sm font-bold transition shadow-lg shadow-[#0B2B5E]/30";
+          btnOk.innerText = "OK";
+          btnOk.onclick = () => document.getElementById('custom-modal').classList.add('hidden');
+          actions.appendChild(btnOk);
+        }
+        
+        document.getElementById('custom-modal').classList.remove('hidden');
+      }
+
+      function openRotinaModal() {
+        const dateInput = document.getElementById('input-data-rotina');
+        if(dateInput && selectedDateObj) {
+          dateInput.value = selectedDateObj.getFullYear() + '-' + ('0'+(selectedDateObj.getMonth()+1)).slice(-2) + '-' + ('0'+selectedDateObj.getDate()).slice(-2);
+        }
+        document.getElementById('rotina-modal').classList.remove('hidden');
+      }
+
+      function closeRotinaModal() {
+        document.getElementById('rotina-modal').classList.add('hidden');
+        document.getElementById('form-rotina').reset();
+        document.getElementById('div-data-fim-modal').style.display = 'none';
+      }
+
+      function showSection(id) {
+        ['dashboard','atendimentos','rotinas','colaborador'].forEach(s => {
+          document.getElementById(s).classList.add('hidden');
+          document.getElementById('nav-'+s).classList.remove('active');
+        });
+        document.getElementById(id).classList.remove('hidden');
+        document.getElementById('nav-'+id).classList.add('active');
+        if(id === 'rotinas') renderCalendar();
+        if(id === 'dashboard') loadDashboard();
+      }
+
+      function loadColaboradores() { 
+        google.script.run.withSuccessHandler(d => { 
+          const s = document.getElementById('input-solicitante'); 
+          const f = document.getElementById('filter-collab'); 
+          const dashF = document.getElementById('dash-filter-collab'); 
+          
+          if(s){s.innerHTML='<option value="">Selecione...</option>'; d.forEach(c=>s.add(new Option(c.nome,c.nome)));}
+          if(f){f.innerHTML='<option value="all">👥 T. Colab</option>'; d.forEach(c=>f.add(new Option(c.nome,c.nome)));}
+          if(dashF){dashF.innerHTML='<option value="all">👥 T. Colab</option>'; d.forEach(c=>dashF.add(new Option(c.nome,c.nome)));}
+        }).getColaboradores(); 
+      }
+      
+      function loadEquipes() { 
+        google.script.run.withSuccessHandler(l => { 
+          const s = document.getElementById('input-equipe'); 
+          const fEq = document.getElementById('filter-equipe'); 
+          const dashEq = document.getElementById('dash-filter-equipe'); 
+          
+          if(s){s.innerHTML=''; l.forEach(i=>s.add(new Option(i,i)));} 
+          if(fEq){fEq.innerHTML='<option value="all">🏢 T. Equipes</option>'; l.forEach(i=>fEq.add(new Option(i,i)));}
+          if(dashEq){dashEq.innerHTML='<option value="all">🏢 T. Equipes</option>'; l.forEach(i=>dashEq.add(new Option(i,i)));}
+        }).getEquipesList(); 
+      }
+
+      function loadDashboard() { 
+        showLoader(); 
+
+        const dashFilters = {
+           periodo: document.getElementById('dash-filter-period') ? document.getElementById('dash-filter-period').value : 'all',
+           mes: document.getElementById('dash-filter-month') ? document.getElementById('dash-filter-month').value : 'all',
+           equipe: document.getElementById('dash-filter-equipe') ? document.getElementById('dash-filter-equipe').value : 'all',
+           collab: document.getElementById('dash-filter-collab') ? document.getElementById('dash-filter-collab').value : 'all'
+        };
+
+        google.script.run.withSuccessHandler(d => {
+          hideLoader();
+          
+          document.getElementById('kpi-total').innerText = d.total; 
+          document.getElementById('kpi-tma').innerText = d.tma;
+          document.getElementById('kpi-hoje').innerText = d.hoje;
+          document.getElementById('kpi-top-sys').innerText = d.topSistema;
+
+          ['chart-sistemas', 'chart-evolucao', 'chart-categorias'].forEach(id => {
+            const canvas = document.getElementById(id);
+            if(canvas) {
+              const existingChart = Chart.getChart(canvas);
+              if(existingChart) existingChart.destroy();
+            }
+          });
+
+          const ctxSistemas = document.getElementById('chart-sistemas');
+          if (ctxSistemas && Object.keys(d.sistemas).length > 0) {
+            const sysValues = Object.values(d.sistemas);
+            const totalSys = sysValues.reduce((a, b) => a + b, 0);
+            const maxVal = Math.max(...sysValues);
+            const pct = totalSys > 0 ? Math.round((maxVal / totalSys) * 100) : 0;
+            document.getElementById('gauge-center-text').innerText = pct + '%';
+
+            new Chart(ctxSistemas, {
+              type: 'doughnut',
+              data: {
+                labels: Object.keys(d.sistemas),
+                datasets: [{
+                  data: sysValues,
+                  backgroundColor: ['#0B2B5E', '#C8A153', '#1e3a8a', '#eab308', '#cbd5e1'], 
+                  borderWidth: 0,
+                  hoverOffset: 6
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                circumference: 180, 
+                rotation: -90,      
+                cutout: '80%',      
+                plugins: { legend: { display: false } } 
+              }
+            });
+          }
+
+          const ctxEvolucao = document.getElementById('chart-evolucao');
+          if (ctxEvolucao) {
+            new Chart(ctxEvolucao, {
+              type: 'line',
+              data: {
+                labels: d.labels7dias,
+                datasets: [
+                  {
+                    label: 'Volume de Chamados',
+                    data: d.data7diasAtend,
+                    borderColor: '#0B2B5E', 
+                    backgroundColor: 'rgba(11, 43, 94, 0.1)',
+                    borderWidth: 3,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#0B2B5E',
+                    pointRadius: 4,
+                    tension: 0.4, 
+                    yAxisID: 'y'
+                  },
+                  {
+                    label: 'Tempo Total (min)',
+                    data: d.data7diasTempo,
+                    borderColor: '#C8A153', 
+                    borderWidth: 2,
+                    borderDash: [5, 5], 
+                    pointRadius: 0,
+                    tension: 0.4,
+                    yAxisID: 'y1'
+                  }
+                ]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 10, font: {family: 'Poppins'} } } },
+                scales: {
+                  x: { grid: { display: false }, ticks: {font: {family: 'Poppins', size: 11}} },
+                  y: { type: 'linear', display: true, position: 'left', grid: { borderDash: [4, 4], color: '#e2e8f0' }, ticks: {font: {family: 'Poppins', size: 11}} },
+                  y1: { type: 'linear', display: true, position: 'right', grid: { display: false }, ticks: {font: {family: 'Poppins', size: 11}} }
+                }
+              }
+            });
+          }
+
+          const ctxCategorias = document.getElementById('chart-categorias');
+          if (ctxCategorias) {
+            new Chart(ctxCategorias, {
+              type: 'bar',
+              data: {
+                labels: Object.keys(d.categorias),
+                datasets: [{
+                  label: 'Chamados',
+                  data: Object.values(d.categorias),
+                  backgroundColor: '#0B2B5E', 
+                  borderRadius: 6, 
+                  barThickness: 40
+                }]
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                  x: { grid: { display: false }, ticks: {font: {family: 'Poppins', size: 12, weight: '500'}} },
+                  y: { beginAtZero: true, grid: { borderDash: [4, 4], color: '#e2e8f0' }, ticks: {font: {family: 'Poppins', size: 11}} }
+                }
+              }
+            });
+          }
+
+        }).getDashboardData(dashFilters); 
+      }
+
+      function loadCalendarEvents() { 
+        google.script.run.withSuccessHandler(e => { 
+          calendarEventsCache = e; 
+          renderCalendar(); 
+          selectDay(selectedDateObj); 
+        }).getCalendarEvents(); 
+      }
+
+      function handleAtendimento(e) { 
+        e.preventDefault(); 
+        showLoader();
+        google.script.run.withSuccessHandler(r=>{
+          hideLoader();
+          showModal("Sucesso", r.message, 'alert');
+          document.getElementById('form-atendimento').reset(); 
+          
+          document.getElementById('div-subcategoria').classList.add('hidden');
+          
+          loadCalendarEvents();
+        }).salvarAtendimento({
+          solicitante: document.getElementById('input-solicitante').value, 
+          sistema: e.target.sistema.value, 
+          subcategoria: e.target.subcategoria ? e.target.subcategoria.value : "", 
+          categoria: e.target.categoria.value, 
+          tempo: e.target.tempo.value, 
+          descricao: e.target.descricao.value
+        }); 
+      }
+      
+      function handleRotina(e) { 
+        e.preventDefault(); 
+        showLoader();
+        google.script.run.withSuccessHandler(r=>{
+          hideLoader();
+          closeRotinaModal(); 
+          if(r.success){
+            showModal("Sucesso", r.message, 'alert'); 
+          } else {
+            showModal("Aviso", r.message, 'alert'); 
+          }
+          loadCalendarEvents();
+        }).salvarRotina({
+          titulo: e.target.titulo.value, 
+          dataRotina: e.target.dataRotina.value, 
+          horaInicio: e.target.horaInicio.value,
+          recorrencia: e.target.recorrencia.value,
+          dataFim: e.target.dataFim.value,
+          prioridade: e.target.prioridade.value 
+        }); 
+      }
+      
+      function handleColaborador(e) { 
+        e.preventDefault(); 
+        showLoader();
+        google.script.run.withSuccessHandler(r=>{
+          hideLoader();
+          showModal("Sucesso", r.message, 'alert');
+          document.getElementById('form-colaborador').reset(); 
+          loadColaboradores();
+        }).salvarNovoColaborador({nome:e.target.nome.value, equipe:e.target.equipe.value}); 
+      }
+
+      function markAsDone(id) {
+        showModal('Confirmação', 'Você finalizou esta rotina?', 'confirm', function() {
+          showLoader();
+          google.script.run.withSuccessHandler(function(res) {
+            hideLoader();
+            if(res.success) {
+              loadCalendarEvents(); 
+            } else {
+              showModal('Erro', "Falha: " + res.message, 'alert');
+            }
+          }).concluirRotina(id);
+        });
+      }
+
+      function changeMonth(step) {
+        const period = document.getElementById('filter-period').value;
+        let jump = 1;
+        if(period === 'quarter') jump = 3;
+        if(period === 'semester') jump = 6;
+        if(period === 'year') jump = 12;
+        currentDate.setMonth(currentDate.getMonth() + (step * jump));
+        renderCalendar();
+      }
+
+      function renderCalendar() {
+        const wrapper = document.getElementById('calendar-wrapper');
+        const period = document.getElementById('filter-period').value;
+        const filterCollab = document.getElementById('filter-collab').value;
+        const filterEquipe = document.getElementById('filter-equipe').value; 
+        
+        if(!wrapper) return;
+        wrapper.innerHTML = ''; 
+
+        let monthsToShow = 1;
+        if(period === 'quarter') monthsToShow = 3;
+        if(period === 'semester') monthsToShow = 6;
+        if(period === 'year') monthsToShow = 12;
+
+        let renderDate = new Date(currentDate); 
+        const today = new Date(); today.setHours(0,0,0,0);
+        
+        let totalMinutesGasto = 0;
+
+        const eventosFiltrados = calendarEventsCache.filter(ev => {
+          let passCollab = (filterCollab === 'all' || ev.collaborator === filterCollab);
+          let passEquipe = (filterEquipe === 'all' || ev.team === filterEquipe || ev.team === "Geral"); 
+          return passCollab && passEquipe;
+        });
+
+        const eventosPorData = {};
+        eventosFiltrados.forEach(ev => {
+          if (!eventosPorData[ev.dateIso]) eventosPorData[ev.dateIso] = [];
+          eventosPorData[ev.dateIso].push(ev);
+        });
+
+        for (let m = 0; m < monthsToShow; m++) {
+           let year = renderDate.getFullYear();
+           let month = renderDate.getMonth();
+           
+           let monthContainer = document.createElement('div');
+           monthContainer.className = "mb-8";
+           let monthTitle = document.createElement('h3');
+           monthTitle.className = "text-xl font-extrabold text-[#0B2B5E] mb-3 capitalize border-b-2 border-gray-200 pb-2";
+           monthTitle.innerText = renderDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+           monthContainer.appendChild(monthTitle);
+
+           let weekHeader = document.createElement('div');
+           weekHeader.className = "week-header";
+           ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].forEach(d => {
+             let span = document.createElement('span'); span.innerText = d; weekHeader.appendChild(span);
+           });
+           monthContainer.appendChild(weekHeader);
+
+           let grid = document.createElement('div');
+           grid.className = "month-grid";
+           
+           let firstDay = new Date(year, month, 1);
+           let lastDay = new Date(year, month + 1, 0);
+
+           for(let i=0; i<firstDay.getDay(); i++) { let empty = document.createElement('div'); grid.appendChild(empty); }
+
+           for(let i=1; i<=lastDay.getDate(); i++) {
+             let dayDate = new Date(year, month, i);
+             let dayStr = ('0'+i).slice(-2)+'/'+('0'+(month+1)).slice(-2);
+             let dataKey = year + '-' + ('0'+(month+1)).slice(-2) + '-' + ('0'+i).slice(-2); 
+
+             let cell = document.createElement('div');
+             cell.className = "cal-cell relative";
+             
+             if (selectedDateObj.getDate() === i && selectedDateObj.getMonth() === month && selectedDateObj.getFullYear() === year) {
+               cell.style.boxShadow = "0 0 0 3px #C8A153";
+               cell.style.transform = "scale(1.03)";
+             }
+
+             cell.onclick = () => { selectDay(dayDate); renderCalendar(); }; 
+
+             let isHoliday = holidays.includes(dayStr);
+             let isToday = dayDate.getTime() === today.getTime();
+             let isWeekend = (dayDate.getDay()===0 || dayDate.getDay()===6);
+             let isFuture = dayDate > today;
+             
+             let isPast = dayDate.getTime() < today.getTime();
+
+             let events = eventosPorData[dataKey] || [];
+             let hasOpen = events.some(e => e.status !== "Concluído");
+             let hasDone = events.some(e => e.status === "Concluído");
+             
+             let isPastPending = isPast && hasOpen; 
+
+             if (isPastPending) {
+               cell.style.border = "2px solid #ef4444"; 
+               cell.style.backgroundColor = "#fff0f2"; 
+               cell.style.color = "#be123c"; 
+               cell.innerHTML = `<b class="flex justify-between items-center">${i} <span class="text-red-600 text-lg leading-none font-black animate-pulse" title="Pendência Atrasada!">!</span></b>`; 
+             }
+             else if(isHoliday) { cell.style.border = "2px solid #C8A153"; cell.style.backgroundColor = "#fffbf0"; cell.style.color = "#927129"; cell.innerHTML = `<b>${i} ★</b>`; } 
+             else if(isToday) { cell.style.backgroundColor = "#0B2B5E"; cell.style.color = "white"; cell.innerHTML = `<b>${i}</b>`; } 
+             else if(isWeekend) { cell.style.backgroundColor = "#f9fafb"; cell.style.color = "#9ca3af"; cell.style.pointerEvents = "none"; cell.innerHTML = `<b>${i}</b>`; } 
+             else if(isFuture) { cell.style.backgroundColor = "#eef2ff"; cell.style.color = "#0B2B5E"; cell.style.fontWeight = "600"; cell.innerHTML = `<b>${i}</b>`; } 
+             else { cell.style.color = "#475569"; cell.innerHTML = `<b class="font-medium">${i}</b>`; }
+
+             if(events.length > 0) {
+               let totalDay = events.length;
+               let doneDay = events.filter(e => e.status === "Concluído").length;
+               
+               events.forEach(ev => {
+                 if(ev.status === "Concluído" && ev.duration) {
+                   totalMinutesGasto += ev.duration;
+                 }
+               });
+
+               let footerContainer = document.createElement('div');
+               footerContainer.className = "flex justify-between items-end mt-auto";
+
+               let dots = document.createElement('div'); 
+               dots.className = "flex gap-1 flex-wrap";
+               if(hasDone) dots.innerHTML += `<div class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm"></div>`;
+               if(hasOpen) dots.innerHTML += `<div class="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-sm"></div>`;
+               
+               let fraction = document.createElement('span');
+               fraction.className = "text-[10px] font-bold text-gray-500 bg-gray-100 px-1.5 rounded-md";
+               fraction.innerText = `${doneDay}/${totalDay}`;
+
+               footerContainer.appendChild(dots);
+               footerContainer.appendChild(fraction);
+               cell.appendChild(footerContainer);
+             }
+             grid.appendChild(cell);
+           }
+           monthContainer.appendChild(grid);
+           wrapper.appendChild(monthContainer);
+           renderDate.setMonth(renderDate.getMonth() + 1);
+        }
+        
+        const timeDisplay = document.getElementById('total-time-display');
+        if(timeDisplay) {
+          let hours = Math.floor(totalMinutesGasto / 60);
+          let mins = Math.floor(totalMinutesGasto % 60);
+          timeDisplay.innerText = `${hours}h ${mins}m`;
+        }
+
+        selectDay(selectedDateObj, true);
+      }
+
+      function selectDay(dateObj, isReRender = false) {
+        if(!isReRender) {
+           selectedDateObj = dateObj; 
+        }
+        
+        document.getElementById('selected-date-display').innerText = dateObj.toLocaleDateString('pt-BR',{weekday:'long', day:'numeric', month:'long'});
+        
+        const filterCollab = document.getElementById('filter-collab').value;
+        const filterEquipe = document.getElementById('filter-equipe').value; 
+        
+        let dateIsoTarget = dateObj.getFullYear() + '-' + ('0'+(dateObj.getMonth()+1)).slice(-2) + '-' + ('0'+dateObj.getDate()).slice(-2);
+
+        let events = calendarEventsCache.filter(ev => {
+           let passCollab = (filterCollab === 'all' || ev.collaborator === filterCollab);
+           let passEquipe = (filterEquipe === 'all' || ev.team === filterEquipe || ev.team === "Geral");
+           return ev.dateIso === dateIsoTarget && passCollab && passEquipe;
+        });
+
+        events.sort((a, b) => a.priority.localeCompare(b.priority));
+
+        currentEventsDone = events.filter(e => e.status === "Concluído");
+        currentEventsOpen = events.filter(e => e.status !== "Concluído");
+
+        if(!isReRender) {
+          currentPageOpen = 1;
+          currentPageDone = 1;
+        }
+
+        renderOpenList();
+        renderDoneList();
+      }
+
+      function changePageOpen(step) { currentPageOpen += step; renderOpenList(); }
+      function changePageDone(step) { currentPageDone += step; renderDoneList(); }
+
+      function renderOpenList() {
+        const listOpen = document.getElementById('list-open');
+        listOpen.innerHTML = '';
+
+        if(currentEventsOpen.length === 0) {
+          listOpen.innerHTML = '<p class="text-sm text-gray-400 font-medium italic">Nenhuma pendência.</p>';
+          return;
+        }
+
+        let start = (currentPageOpen - 1) * ITEMS_PER_PAGE;
+        let end = start + ITEMS_PER_PAGE;
+        let paginated = currentEventsOpen.slice(start, end);
+
+        let wrapper = document.createElement('div');
+        wrapper.className = "space-y-3 mb-2";
+
+        paginated.forEach(ev => {
+          let prioColor = "bg-blue-100 text-blue-700 border-blue-200";
+          if(ev.priority.includes("1")) prioColor = "bg-rose-100 text-rose-700 border-rose-200";
+          else if(ev.priority.includes("3")) prioColor = "bg-emerald-100 text-emerald-700 border-emerald-200";
+          let prioridadeTag = `<span class="${prioColor} border text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider">${ev.priority}</span>`;
+
+          let html = `
+            <div class="bg-white border-l-4 border-rose-500 p-4 rounded-xl shadow-md flex justify-between items-center group">
+              <div class="flex-1">
+                <p class="font-bold text-[#0B2B5E] text-sm">${ev.title}</p>
+                <div class="flex justify-between text-xs text-gray-500 mt-2 items-center">
+                   <div class="flex gap-2 items-center font-medium">
+                     <span class="bg-gray-100 py-1 px-2 rounded-md flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">schedule</span> ${ev.time}</span> 
+                     <span class="bg-gray-100 py-1 px-2 rounded-md hidden md:inline-flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">group</span> ${ev.team}</span>
+                   </div>
+                   ${prioridadeTag}
+                </div>
+              </div>
+              ${ev.id ? `<button onclick="markAsDone('${ev.id}')" class="ml-4 bg-emerald-50 hover:bg-emerald-500 hover:text-white text-emerald-600 p-2.5 rounded-full transition shadow-sm border border-emerald-200 hover:border-emerald-500" title="Concluir tarefa">
+                <span class="material-symbols-outlined text-md font-bold">check</span>
+              </button>` : ''}
+            </div>`;
+           wrapper.innerHTML += html;
+        });
+
+        listOpen.appendChild(wrapper);
+
+        if (currentEventsOpen.length > ITEMS_PER_PAGE) {
+           let totalPages = Math.ceil(currentEventsOpen.length / ITEMS_PER_PAGE);
+           let pagHTML = `
+             <div class="flex justify-between items-center mt-auto pt-4 border-t border-gray-200">
+                <button onclick="changePageOpen(-1)" class="text-xs font-bold text-rose-600 hover:underline disabled:opacity-30 uppercase tracking-widest" ${currentPageOpen===1?'disabled':''}>◀ Ant</button>
+                <span class="text-xs text-gray-500 font-bold bg-white px-3 py-1 rounded-full border border-gray-200 shadow-sm">${currentPageOpen} / ${totalPages}</span>
+                <button onclick="changePageOpen(1)" class="text-xs font-bold text-rose-600 hover:underline disabled:opacity-30 uppercase tracking-widest" ${currentPageOpen===totalPages?'disabled':''}>Próx ▶</button>
+             </div>`;
+           listOpen.innerHTML += pagHTML;
+        }
+      }
+
+      function renderDoneList() {
+        const listDone = document.getElementById('list-done');
+        listDone.innerHTML = '';
+
+        if(currentEventsDone.length === 0) {
+          listDone.innerHTML = '<p class="text-sm text-gray-400 font-medium italic">Nenhum registro concluído.</p>';
+          return;
+        }
+
+        let start = (currentPageDone - 1) * ITEMS_PER_PAGE;
+        let end = start + ITEMS_PER_PAGE;
+        let paginated = currentEventsDone.slice(start, end);
+
+        let wrapper = document.createElement('div');
+        wrapper.className = "space-y-3 mb-2";
+
+        paginated.forEach(ev => {
+           let prioColor = "bg-gray-100 text-gray-500 border-gray-200";
+           if(ev.priority.includes("1")) prioColor = "bg-rose-50 text-rose-400 border-rose-100";
+           else if(ev.priority.includes("3")) prioColor = "bg-emerald-50 text-emerald-500 border-emerald-100";
+           let prioridadeTag = `<span class="${prioColor} border text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider">${ev.priority}</span>`;
+
+           let html = `
+            <div class="bg-gray-50/80 border border-gray-200 p-4 rounded-xl shadow-sm opacity-80">
+              <p class="font-bold text-gray-500 text-sm line-through decoration-2 decoration-emerald-400">${ev.title}</p>
+              <div class="flex justify-between text-xs text-gray-400 mt-2 items-center">
+                 <div class="flex gap-2 items-center font-medium">
+                   <span class="bg-white py-1 px-2 rounded-md border border-gray-100 flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">schedule</span> ${ev.time}</span>
+                   <span class="bg-white py-1 px-2 rounded-md border border-gray-100 hidden md:inline-flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">person</span> ${ev.collaborator}</span>
+                 </div>
+                 ${prioridadeTag}
+              </div>
+            </div>`;
+           wrapper.innerHTML += html;
+        });
+
+        listDone.appendChild(wrapper);
+
+        if (currentEventsDone.length > ITEMS_PER_PAGE) {
+           let totalPages = Math.ceil(currentEventsDone.length / ITEMS_PER_PAGE);
+           let pagHTML = `
+             <div class="flex justify-between items-center mt-auto pt-4 border-t border-gray-200">
+                <button onclick="changePageDone(-1)" class="text-xs font-bold text-emerald-600 hover:underline disabled:opacity-30 uppercase tracking-widest" ${currentPageDone===1?'disabled':''}>◀ Ant</button>
+                <span class="text-xs text-gray-500 font-bold bg-white px-3 py-1 rounded-full border border-gray-200 shadow-sm">${currentPageDone} / ${totalPages}</span>
+                <button onclick="changePageDone(1)" class="text-xs font-bold text-emerald-600 hover:underline disabled:opacity-30 uppercase tracking-widest" ${currentPageDone===totalPages?'disabled':''}>Próx ▶</button>
+             </div>`;
+           listDone.innerHTML += pagHTML;
+        }
+      }
+    </script>
+  </body>
+</html>
